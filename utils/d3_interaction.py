@@ -2,15 +2,37 @@ import os
 import subprocess
 from pywinauto.application import Application
 import time
+import winreg
+
+
+def get_d3_projects_folder_from_registry():
+    try:
+        # Open the registry key
+        registry_key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"SOFTWARE\d3 Technologies\d3 Production Suite",
+            0,
+            winreg.KEY_READ)
+
+        # Read the value
+        value, regtype = winreg.QueryValueEx(registry_key, "d3 Projects Folder")
+        winreg.CloseKey(registry_key)
+        return value
+    except WindowsError:
+        # Handle the error (e.g., key not found), perhaps log it or use a default value
+        return None
 
 
 def check_d3_projects():
-    folder_path = "D:\\d3 Projects"
+    folder_path = get_d3_projects_folder_from_registry()
+
+    if folder_path is None:
+        folder_path = "D:\\d3 Projects"  # Fallback to default if registry key not found
 
     if os.path.exists(folder_path) and os.path.isdir(folder_path):
-        print("| C62865 | d3 Projects check passed: 'd3 Projects' folder exists on D: drive.")
+        print("| C62865 | d3 Projects check passed: 'd3 Projects' folder exists.")
     else:
-        print("| C62865 | d3 Projects check failed: 'd3 Projects' folder not found on D: drive.")
+        print(f"| C62865 | d3 Projects check failed: 'd3 Projects' folder not found at {folder_path}.")
 
 
 def check_d3_manager_tests():
