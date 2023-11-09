@@ -8,9 +8,3 @@ handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logging.getLogger('').addHandler(handler)
-
-
-def log_and_print(message, level="info"):
-    """Logs and prints a message."""
-    getattr(logging, level)(message)
-    # print(f"| {level.upper()} | {message}")

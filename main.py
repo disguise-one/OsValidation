@@ -3,8 +3,6 @@ from utils.logger import logging
 import time
 import sys
 
-sleep_time = 1
-
 
 # try:
 #     logging.info("Running Windows Settings Validation, please wait...")
@@ -49,23 +47,14 @@ sleep_time = 1
 
 try:
     logging.info("Running Devices Validation, please wait...")
-    time.sleep(2)
-    # devices.check_general_devices()
-    # time.sleep(sleep_time)
-    # devices.detect_gpu_brand()
-    # time.sleep(sleep_time)
-    # devices.check_gpu_devices()
-    # time.sleep(sleep_time)
-    # devices.check_network_devices()
-    # time.sleep(sleep_time)
-    # devices.check_capture_card_devices()
-    # time.sleep(sleep_time)
-    # devices.check_audio_devices()
-    # time.sleep(sleep_time)
-    # devices.check_audio_card_management()
-    # time.sleep(sleep_time)
-    # devices.check_media_drives()
-    # time.sleep(sleep_time)
+    devices.check_general_devices()
+    devices.detect_gpu_brand()
+    devices.check_gpu_devices()
+    devices.check_network_devices()
+    devices.check_capture_card_devices()
+    devices.check_audio_devices()
+    devices.check_audio_card_management()
+    devices.check_media_drives()
     devices.check_raid_tool()
 except KeyboardInterrupt:
     logging.info("Keyboard Interrupt received, exiting the program.")

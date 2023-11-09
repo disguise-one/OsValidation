@@ -11,10 +11,30 @@ import psutil
 import ctypes
 
 
+# Global variable to store the configuration
+CONFIG = None
+
+
+def load_config():
+    global CONFIG
+    config_path = 'config/config.yaml'
+    try:
+        with open(config_path, 'r') as f:
+            CONFIG = yaml.safe_load(f)
+        if CONFIG is None:
+            raise ValueError("Configuration is empty")
+    except Exception as e:
+        logging.error(f"Failed to load configuration: {e}")
+        CONFIG = {}
+
+
+# Call load_config  to load the configuration
+load_config()
+
+
 def check_general_devices():
     # Log the start of the general device check
     logging.info("| C62845 | Checking general devices, please wait...")
-    time.sleep(1)
 
     # Initialize WMI object to query system components
     c = wmi.WMI()
@@ -31,7 +51,6 @@ def check_general_devices():
                 warning_devices.append(device)
             else:
                 logging.info(f"| C62845 | Device {device.caption} has a warning symbol but this is expected, skipping.")
-                time.sleep(2)
 
     # Determine and log the result of the device check
     if not warning_devices:
@@ -50,16 +69,15 @@ def detect_gpu_brand():
         if device.PNPDeviceID:
             hardware_id = device.PNPDeviceID.upper()
             if 'VEN_10DE' in hardware_id:  # NVIDIA Vendor ID
-                return 'Nvidia', hardware_id
+                return 'nvidia', hardware_id
             elif 'VEN_1002' in hardware_id:  # AMD Vendor ID
-                return 'AMD', hardware_id
+                return 'amd', hardware_id
     return None, None
 
 
 def check_gpu_devices(open_panel=False):
     # Log the start of the GPU check
-    log_and_print("Checking GPU, please wait...")
-    time.sleep(2)
+    logging.info("Checking GPU, please wait...")
 
     # Define paths to AMD and NVIDIA control panels
     amd_path = os.path.join(os.environ['ProgramFiles'], 'AMD')
@@ -70,30 +88,30 @@ def check_gpu_devices(open_panel=False):
 
     # Log the detected GPU hardware ID
     if hardware_id:
-        log_and_print(f"Detected GPU with Hardware ID: {hardware_id}")
-        log_and_print("Checking GPU Vendor, please wait...")
+        logging.info(f"Detected GPU with Hardware ID: {hardware_id}")
+        logging.info("Checking GPU Vendor, please wait...")
 
     # Check the GPU brand and validate the respective control panel
-    if gpu_brand == 'AMD':
-        log_and_print("Detected an AMD GPU.")
+    if gpu_brand == 'amd':
+        logging.info("Detected an AMD GPU.")
         return check_gpu_control_panel(amd_path, 'CNext\\Cnext\\RadeonSoftware.exe', 'AMD', open_panel)
-    elif gpu_brand == 'Nvidia':
-        log_and_print("Detected an Nvidia GPU.")
+    elif gpu_brand == 'nvidia':
+        logging.info("Detected an nvidia GPU.")
         return check_gpu_control_panel(nvidia_path, 'Control Panel Client\\nvcplui.exe', 'Nvidia', open_panel)
     else:
-        log_and_print('No recognized GPU or control panel found.', "error")
+        logging.info('No recognized GPU or control panel found.', "error")
         return False
 
 
 def check_gpu_control_panel(path, exe_name, control_panel_name, open_panel=False):
     # Log the start of the control panel check for the detected GPU brand
-    log_and_print(f"Checking for {control_panel_name} control panel in path {path}.")
+    logging.info(f"Checking for {control_panel_name} control panel in path {path}.")
     # Build the full path to the control panel executable
     control_panel_exe = os.path.join(path, exe_name)
 
     # Check if the control panel executable exists
     if os.path.exists(control_panel_exe):
-        log_and_print(f"Found {control_panel_name} control panel executable.")
+        logging.info(f"Found {control_panel_name} control panel executable.")
         # If the open_panel flag is True, attempt to open the control panel and ask for user confirmation
         if open_panel:
             subprocess.Popen(control_panel_exe)
@@ -103,28 +121,22 @@ def check_gpu_control_panel(path, exe_name, control_panel_name, open_panel=False
             while user_input.lower() not in ['y', 'n']:
                 user_input = input(f'Please confirm that the {control_panel_name} control panel is open (Y/N): ')
             if user_input.lower() == 'y':
-                log_and_print(f"{control_panel_name} control panel present and able to open.")
+                logging.info(f"{control_panel_name} control panel present and able to open.")
                 return True
             else:
-                log_and_print(f"{control_panel_name} control panel executable not confirmed by user.", "error")
+                logging.info(f"{control_panel_name} control panel executable not confirmed by user.", "error")
                 return False
         return True
     else:
-        log_and_print(f"{control_panel_name} control panel executable not found.", "error")
+        logging.info(f"{control_panel_name} control panel executable not found.", "error")
         return False
 
 
-def load_config():
-    with open('config/config.yaml', 'r') as f:
-        return yaml.safe_load(f)
-
-
-config = load_config()
-
-
 def check_network_devices():
-    expected_names_25 = set(config["expected_names_25"])
-    expected_names_100 = set(config["expected_names_100"])
+    # Use the global CONFIG variable
+    global CONFIG
+    expected_names_25 = set(CONFIG["expected_names_25"])
+    expected_names_100 = set(CONFIG["expected_names_100"])
 
     wmi_obj = wmi.WMI()
     adapters = wmi_obj.Win32_NetworkAdapter()
@@ -152,7 +164,6 @@ def check_network_devices():
 
 def check_capture_card_devices():
     logging.info("| C62852 | Checking for capture cards, please wait...")
-    time.sleep(2)
 
     # Initialize WMI object
     c = wmi.WMI()
@@ -219,13 +230,6 @@ def _check_matrox_devices():
         return False
 
 
-# Load expected device names from config.yaml
-with open("config/config.yaml", 'r') as config_file:
-    config_data = yaml.safe_load(config_file)
-    EXPECTED_INPUT_NAMES = config_data["audio_devices"]["expected_input_names"]
-    EXPECTED_OUTPUT_NAMES = config_data["audio_devices"]["expected_output_names"]
-
-
 def detect_audio_device_by_hardware_id():
     """
     Detects the audio device by its hardware ID.
@@ -240,8 +244,10 @@ def detect_audio_device_by_hardware_id():
 
 
 def check_audio_devices():
+    global CONFIG
+    EXPECTED_INPUT_NAMES = CONFIG["audio_devices"]["expected_input_names"]
+    EXPECTED_OUTPUT_NAMES = CONFIG["audio_devices"]["expected_output_names"]
     logging.info("| C62852 | Checking for Audio devices, please wait...")
-    time.sleep(1)
 
     # Check for audio devices by their hardware IDs
     if not detect_audio_device_by_hardware_id():
@@ -265,16 +271,12 @@ def check_audio_devices():
     output_device_names = sorted(list(output_device_names))
 
     logging.info("| C62852 | Input devices:")
-    time.sleep(1)
     for i, name in enumerate(input_device_names):
         logging.info(f"| C62852 | {i + 1}. {name}")
-        time.sleep(1)
 
     logging.info("| C62852 | Output devices:")
-    time.sleep(1)
     for i, name in enumerate(output_device_names):
         logging.info(f"| C62852 | {i + 1}. {name}")
-        time.sleep(1)
 
     if set(EXPECTED_INPUT_NAMES) == set(input_device_names) and set(EXPECTED_OUTPUT_NAMES) == set(output_device_names):
         logging.info("| C62852 | Audio devices check passed")
@@ -287,7 +289,7 @@ def check_audio_devices():
         return False
 
 
-#
+# TO-DO
 #
 # def check_audio_card_management():
 #     logging.info("| C62853 | Checking for RME Hammerfall, please wait...")
@@ -327,15 +329,10 @@ def check_audio_devices():
 #
 
 
-def load_config():
-    with open('config/config.yaml', 'r') as stream:
-        return yaml.safe_load(stream)
-
-
 def check_media_drives():
-    configuration = load_config()
-    expected_drive_letter = configuration['media_drives']['expected_drive_letter']
-    expected_volume_name = configuration['media_drives']['expected_volume_name']
+    global CONFIG
+    expected_drive_letter = CONFIG['media_drives']['expected_drive_letter']
+    expected_volume_name = CONFIG['media_drives']['expected_volume_name']
 
     logging.info("| C62855 | Checking for media drives, please wait...")
     media_drives = []
@@ -381,21 +378,17 @@ def check_media_drives():
     return media_drives
 
 
-def load_config():
-    with open('config/config.yaml', 'r') as stream:
-        return yaml.safe_load(stream)
-
-
-config = load_config()
-
-
 def detect_raid_controller():
+    global CONFIG
+    raid_hardware_id = CONFIG['raid_controller']['hardware_id']
+    raid_device_name = CONFIG['raid_controller']['device_name']
     c = wmi.WMI()
-    raid_hardware_id = config['raid_controller']['hardware_id']
-    raid_device_name = config['raid_controller']['device_name']  # Retrieve from config
 
     for device in c.Win32_PnPEntity():
-        if raid_hardware_id in device.HardwareID or raid_device_name.lower() in device.Name.lower():
+        # Ensure that HardwareID and Name are iterable before checking
+        if device.HardwareID and raid_hardware_id in device.HardwareID:
+            return True
+        if device.Name and raid_device_name.lower() in device.Name.lower():
             return True
     return False
 
@@ -408,7 +401,7 @@ def check_raid_tool():
         logging.error("| C62856 | ERROR: RAID controller not detected on the system.")
         return
 
-    raid_tool_path = config['raid_controller']['tool_path']
+    raid_tool_path = CONFIG['raid_controller']['tool_path']
     try:
         subprocess.Popen(raid_tool_path)
         logging.info("| C62856 | RAID controller tool opened successfully.")
