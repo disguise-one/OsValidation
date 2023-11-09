@@ -3,7 +3,7 @@ import subprocess
 import pyaudio
 import wmi
 import time
-from utils.logger import logging, log_and_print
+from utils.logger import logging
 import yaml
 import pyautogui
 import sys
@@ -16,6 +16,15 @@ CONFIG = None
 
 
 def load_config():
+    """
+    Loads the configuration from the 'config/config.yaml' file into the global CONFIG variable.
+    If the configuration is empty or an error occurs, it logs the error and sets CONFIG to an empty dictionary.
+
+    Side effects:
+        - Modifies the global CONFIG variable.
+        - Reads from a file on disk.
+        - Logs messages regarding the success or failure of the operation.
+    """
     global CONFIG
     config_path = 'config/config.yaml'
     try:
@@ -33,6 +42,18 @@ load_config()
 
 
 def check_general_devices():
+    """
+    Checks all hardware devices on the system and logs any devices that do not have a status of 'OK'.
+    Devices with a status other than 'OK' are added to a list of warning devices unless they are
+    identified as 'Microsoft Basic Display Adapter', which is an expected fallback driver.
+
+    Returns:
+        bool: True if all devices are working correctly, False if any device has a warning status.
+
+    Side effects:
+        - Logs messages about the device statuses.
+    """
+
     # Log the start of the general device check
     logging.info("| C62845 | Checking general devices, please wait...")
 
@@ -62,6 +83,14 @@ def check_general_devices():
 
 
 def detect_gpu_brand():
+    """
+    Detects the brand of the GPU installed in the system by querying the hardware ID.
+
+    Returns:
+        tuple: A tuple containing the brand of the GPU ('nvidia', 'amd', or None) and its hardware ID.
+               If the GPU brand is not recognized, both elements of the tuple will be None.
+    """
+
     # Initialize WMI object
     c = wmi.WMI()
     # Iterate over all hardware devices to detect GPU brand based on its Hardware ID
@@ -76,6 +105,21 @@ def detect_gpu_brand():
 
 
 def check_gpu_devices(open_panel=False):
+    """
+    Checks if the appropriate GPU control panel is present for the detected GPU brand and optionally opens it.
+
+    Parameters:
+        open_panel (bool): If True, the function will attempt to open the GPU control panel and will prompt
+                           the user for confirmation.
+
+    Returns:
+        bool: True if the correct GPU control panel is found (and optionally confirmed by the user), False otherwise.
+
+    Side effects:
+        - Opens external applications if open_panel is True.
+        - Logs messages about the GPU check progress and results.
+    """
+
     # Log the start of the GPU check
     logging.info("Checking GPU, please wait...")
 
@@ -104,6 +148,23 @@ def check_gpu_devices(open_panel=False):
 
 
 def check_gpu_control_panel(path, exe_name, control_panel_name, open_panel=False):
+    """
+    Checks if the executable for the GPU control panel is present in the specified path and optionally opens it.
+
+    Parameters:
+        path (str): The file path where the GPU control panel executable is expected to be located.
+        exe_name (str): The name of the control panel executable file.
+        control_panel_name (str): The human-readable name of the GPU control panel (e.g., 'AMD', 'Nvidia').
+        open_panel (bool): If True, the function will attempt to open the GPU control panel and prompt for user confirmation.
+
+    Returns:
+        bool: True if the control panel executable is found (and optionally confirmed by the user), False otherwise.
+
+    Side effects:
+        - May open an external application if open_panel is True.
+        - Logs messages about the control panel check progress and results.
+    """
+
     # Log the start of the control panel check for the detected GPU brand
     logging.info(f"Checking for {control_panel_name} control panel in path {path}.")
     # Build the full path to the control panel executable
@@ -128,11 +189,21 @@ def check_gpu_control_panel(path, exe_name, control_panel_name, open_panel=False
                 return False
         return True
     else:
-        logging.info(f"{control_panel_name} control panel executable not found.", "error")
+        logging.error(f"{control_panel_name} control panel executable not found.", )
         return False
 
 
 def check_network_devices():
+    """
+    Checks if the expected network devices are present in the system based on the global CONFIG variable.
+
+    Returns:
+        bool: True if all expected network devices are found, False otherwise.
+
+    Side effects:
+        - Logs messages about the network devices check progress and results.
+    """
+
     # Use the global CONFIG variable
     global CONFIG
     expected_names_25 = set(CONFIG["expected_names_25"])
@@ -150,19 +221,29 @@ def check_network_devices():
 
     if found_25:
         found_list = sorted(list(expected_names_25 & found_adapters))
-        logging.info(f"| INFO | Found: {', '.join(found_list)}.")
+        logging.info(f"Found: {', '.join(found_list)}.")
         return True
     elif found_100:
         found_list = sorted(list(expected_names_100 & found_adapters))
-        logging.info(f"| INFO | Found: {', '.join(found_list)}.")
+        logging.info(f"Found: {', '.join(found_list)}.")
         return True
     else:
         found_list = sorted(list(found_adapters))
-        logging.info(f"| ERROR | No complete set of 25Gbit or 100Gbit adapters found. Found: {', '.join(found_list)}.")
+        logging.error(f"No complete set of 25Gbit or 100Gbit adapters found. Found: {', '.join(found_list)}.")
         return False
 
 
 def check_capture_card_devices():
+    """
+    Checks for the presence of specific capture card devices by their hardware ID.
+
+    Returns:
+        bool: True if the expected capture card device is found, False otherwise.
+
+    Side effects:
+        - Logs messages about the capture card check progress and results.
+    """
+
     logging.info("| C62852 | Checking for capture cards, please wait...")
 
     # Initialize WMI object
@@ -191,6 +272,18 @@ def check_capture_card_devices():
 
 
 def _check_deltacast_devices():
+    """
+    Checks for the presence of Deltacast devices by looking for a specific keyword in the device's caption
+    and verifies the presence of the dCARE utility.
+
+    Returns:
+        bool: True if the Deltacast driver and dCARE utility are detected, False otherwise.
+
+    Side effects:
+        - May open the dCARE utility application.
+        - Logs messages about the Deltacast device check progress and results.
+    """
+
     # Check for the "delta" keyword in device's caption to ensure driver presence
     for device in wmi.WMI().Win32_PnPEntity():
         if "DELTA" in (device.Caption or "").upper():
@@ -216,6 +309,17 @@ def _check_deltacast_devices():
 
 
 def _check_matrox_devices():
+    """
+    Checks for the presence of Matrox devices by comparing the list of expected device captions
+    against the device captions found in the system.
+
+    Returns:
+        bool: True if all expected Matrox devices are found, False otherwise.
+
+    Side effects:
+        - Logs messages about the Matrox device check progress and results.
+    """
+
     matrox_devices = ['Matrox Bus', 'Matrox Multi-function Device', 'Matrox Node Transfer Device',
                       'Matrox System Clock', 'Matrox Topology Device']
     found_devices = [device.Caption for device in wmi.WMI().Win32_PnPEntity() if device.Caption in matrox_devices]
@@ -232,8 +336,10 @@ def _check_matrox_devices():
 
 def detect_audio_device_by_hardware_id():
     """
-    Detects the audio device by its hardware ID.
-    Returns True if found, otherwise False.
+    Detects the presence of an audio device by a specific hardware ID.
+
+    Returns:
+        bool: True if the audio device with the specified hardware ID is found, False otherwise.
     """
     hardware_id = "PCI\\VEN_1D18&DEV_3FC6"
     c = wmi.WMI()
@@ -244,6 +350,16 @@ def detect_audio_device_by_hardware_id():
 
 
 def check_audio_devices():
+    """
+    Checks for the presence of expected audio input and output devices based on the global CONFIG variable.
+
+    Returns:
+        bool: True if all expected audio devices are found, False otherwise.
+
+    Side effects:
+        - Logs messages about the audio devices check progress and results.
+    """
+
     global CONFIG
     EXPECTED_INPUT_NAMES = CONFIG["audio_devices"]["expected_input_names"]
     EXPECTED_OUTPUT_NAMES = CONFIG["audio_devices"]["expected_output_names"]
@@ -330,6 +446,17 @@ def check_audio_devices():
 
 
 def check_media_drives():
+    """
+    Checks for the presence of expected media drives based on the global CONFIG variable.
+
+    Returns:
+        list: A list of dictionaries, each containing details of a media drive found in the system.
+
+    Side effects:
+        - Logs messages about the media drives check progress and results.
+        - May cause a Windows API call to retrieve volume information.
+    """
+
     global CONFIG
     expected_drive_letter = CONFIG['media_drives']['expected_drive_letter']
     expected_volume_name = CONFIG['media_drives']['expected_volume_name']
@@ -379,6 +506,13 @@ def check_media_drives():
 
 
 def detect_raid_controller():
+    """
+    Detects the presence of a RAID controller in the system based on hardware ID and device name from the global CONFIG variable.
+
+    Returns:
+        bool: True if the RAID controller is detected, False otherwise.
+    """
+
     global CONFIG
     raid_hardware_id = CONFIG['raid_controller']['hardware_id']
     raid_device_name = CONFIG['raid_controller']['device_name']
@@ -394,8 +528,15 @@ def detect_raid_controller():
 
 
 def check_raid_tool():
+    """
+    Checks for the presence of the RAID controller tool by attempting to open it using the path specified in the global CONFIG variable.
+
+    Side effects:
+        - May open an external application (the RAID tool).
+        - Logs messages about the RAID tool check progress and results.
+    """
+
     logging.info("| C62856 | Checking for the RAID controller tool, please wait...")
-    time.sleep(2)
 
     if not detect_raid_controller():
         logging.error("| C62856 | ERROR: RAID controller not detected on the system.")
