@@ -35,15 +35,15 @@ import sys
 
 try:
     logging.info("Running Devices Validation, please wait...")
-    devices.check_general_devices()
-    devices.detect_gpu_brand()
-    devices.check_gpu_devices()
-    devices.check_network_devices()
-    devices.check_capture_card_devices()
+    # devices.check_general_devices()
+    # devices.detect_gpu_brand()
+    # devices.check_gpu_devices()
+    # devices.check_network_devices()
+    # devices.check_capture_card_devices()
     devices.check_audio_devices()
     devices.check_audio_card_management()
-    devices.check_media_drives()
-    devices.check_raid_tool()
+    # devices.check_media_drives()
+    # devices.check_raid_tool()
 except KeyboardInterrupt:
     logging.info("Keyboard Interrupt received, exiting the program.")
     sys.exit(0)

@@ -9,7 +9,13 @@ import pyautogui
 import sys
 import psutil
 import ctypes
-
+import logging
+import time
+import cv2
+import numpy as np
+from pywinauto.application import Application
+from pywinauto.keyboard import send_keys
+from PIL import Image
 
 # Global variable to store the configuration
 CONFIG = None
@@ -405,44 +411,79 @@ def check_audio_devices():
         return False
 
 
-# TO-DO
-#
-# def check_audio_card_management():
-#     logging.info("| C62853 | Checking for RME Hammerfall, please wait...")
-#     sys.stdout.flush()
-#     # wait for system tray to load
-#     time.sleep(5)
-#
-#     # navigate to Hammerfall DSP icon and click on it
-#     pyautogui.click(x=1690, y=1065)
-#
-#     # wait for the Hammerfall DSP settings window to open
-#     time.sleep(5)
-#
-#     logging.info("| C62854 | Checking for TotalMix Audio patch, please wait...")
-#     sys.stdout.flush()
-#
-#     # navigate to TotalMix icon and click on it
-#     pyautogui.click(x=1665, y=1058)
-#     time.sleep(3)
-#     pyautogui.click(x=1710, y=981)
-#     time.sleep(3)
-#     # switch to Matrix View to check
-#     pyautogui.press('x')
-#
-#     # ask the user if the settings window opened
-#     user_input = input('| C62854 | Please check that the matrix is mapped as a diagonal line from Analog 1/2 '
-#                        'to ADAT 7/8, with a column of mappings in the third and fourth column. Press Enter when ready.')
-#     time.sleep(2)
-#     user_input = input('| C62853 | Did the Hammerfall DSP settings window open '
-#                        'and the matrix is configured as expected? (Y/N): ')
-#     if user_input.lower() == 'y':
-#         logging.info("| C62853 | Audio card management check passed")
-#         return True
-#     else:
-#         logging.error("| C62853 | Audio card management check failed")
-#         return False
-#
+def open_hammerfall_dsp_settings():
+    try:
+        app = Application(backend="uia")
+        app.connect(title_re=".*Hammerfall DSP Settings.*")  # Adjust the regex according to the actual window title
+        hammerfall_window = app.window(title_re=".*Hammerfall DSP Settings.*")
+        hammerfall_window.set_focus()
+        return hammerfall_window
+    except Exception as e:
+        logging.error(f"Error opening Hammerfall DSP Settings: {e}")
+        return None
+
+
+def open_totalmix():
+    try:
+        app = Application(backend="uia")
+        app.connect(title_re=".*RME TotalMix FX: HDSP AIO.*")
+        totalmix_window = app.window(title_re=".*RME TotalMix FX: HDSP AIO.*")
+        totalmix_window.set_focus()
+        return totalmix_window
+    except Exception as e:
+        logging.error(f"Error opening TotalMix: {e}")
+        return None
+
+
+def capture_window_screenshot(window):
+    if window.exists():
+        window.set_focus()
+        screenshot = window.capture_as_image()
+        screenshot.save("current_view.png")
+        return "current_view.png"
+    else:
+        return None
+
+
+def image_match(reference_image_path, current_view_path):
+    reference_image = cv2.imread(reference_image_path)
+    current_view = cv2.imread(current_view_path)
+    difference = cv2.subtract(reference_image, current_view)
+    return not np.any(difference)  # If difference is all zeros, images are the same
+
+
+def check_audio_card_management():
+    logging.info("| C62853 | Checking for RME Hammerfall, please wait...")
+    hammerfall_window = open_hammerfall_dsp_settings()
+    if hammerfall_window is None:
+        logging.error("| C62853 | Failed to open Hammerfall DSP settings window.")
+        return False
+
+    time.sleep(5)  # wait for the Hammerfall DSP settings window to open
+
+    logging.info("| C62854 | Checking for TotalMix Audio patch, please wait...")
+    totalmix_window = open_totalmix()
+    if totalmix_window is None:
+        logging.error("| C62854 | Failed to open TotalMix window.")
+        return False
+
+    # Switch to Matrix View by pressing 'X'
+    send_keys('X')
+    time.sleep(3)  # wait for the view to switch to Matrix
+
+    # Capture a screenshot of the TotalMix window
+    current_view_path = capture_window_screenshot(totalmix_window)
+    if current_view_path is None:
+        logging.error("| C62854 | Failed to capture screenshot of TotalMix window.")
+        return False
+
+    # Compare the screenshot with your reference image
+    if image_match('resources/TotalMix.PNG', current_view_path):
+        logging.info("| C62854 | TotalMix matrix view matches reference image. Test passed.")
+        return True
+    else:
+        logging.error("| C62854 | TotalMix matrix view does not match reference image. Test failed.")
+        return False
 
 
 def check_media_drives():
