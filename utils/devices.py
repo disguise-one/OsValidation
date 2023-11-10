@@ -2,11 +2,8 @@ import os
 import subprocess
 import pyaudio
 import wmi
-import time
 from utils.logger import logging
 import yaml
-import pyautogui
-import sys
 import psutil
 import ctypes
 import logging
@@ -14,8 +11,7 @@ import time
 import cv2
 import numpy as np
 from pywinauto.application import Application
-from pywinauto.keyboard import send_keys
-from PIL import Image
+from pywinauto import Desktop
 
 # Global variable to store the configuration
 CONFIG = None
@@ -411,28 +407,73 @@ def check_audio_devices():
         return False
 
 
-def open_hammerfall_dsp_settings():
+def click_notification_chevron():
     try:
-        app = Application(backend="uia")
-        app.connect(title_re=".*Hammerfall DSP Settings.*")  # Adjust the regex according to the actual window title
-        hammerfall_window = app.window(title_re=".*Hammerfall DSP Settings.*")
-        hammerfall_window.set_focus()
-        return hammerfall_window
+        # Connect to the taskbar and click the Notification Chevron
+        taskbar = Desktop(backend="uia").window(class_name="Shell_TrayWnd")
+        chevron = taskbar.child_window(title="Notification Chevron", control_type="Button")
+        chevron.click_input()
     except Exception as e:
-        logging.error(f"Error opening Hammerfall DSP Settings: {e}")
-        return None
+        logging.error(f"Error clicking Notification Chevron: {e}")
+
+
+def click_hammerfall_dsp_settings():
+    try:
+        # Connect to the system tray and click the Hammerfall DSP Settings button
+        system_tray = Desktop(backend="uia").window(class_name="NotifyIconOverflowWindow")
+        hammerfall_button = system_tray.child_window(title="Hammerfall DSP Settings", control_type="Button")
+        hammerfall_button.click_input()
+    except Exception as e:
+        logging.error(f"Error clicking Hammerfall DSP Settings button: {e}")
+
+
+def click_totalmix_tray_button():
+    try:
+        system_tray = Desktop(backend="uia").window(class_name="NotifyIconOverflowWindow")
+        if not system_tray.exists():
+            logging.error("System tray overflow window not found.")
+            return False
+
+        totalmix_button = system_tray.child_window(title="Restore / Minimize all TotalMix FX Windows", control_type="Button")
+        if not totalmix_button.exists():
+            logging.error("TotalMix tray button not found.")
+            return False
+
+        totalmix_button.click_input()
+        return True
+    except Exception as e:
+        logging.error(f"Error clicking TotalMix tray button: {e}")
+        return False
+
+
+def open_hammerfall_dsp_settings():
+    click_notification_chevron()
+    click_hammerfall_dsp_settings()
+    time.sleep(5)
+
+    try:
+        # Try to connect to the Hammerfall DSP Settings window
+        app = Application(backend="uia").connect(title_re=".*Hammerfall DSP Settings.*", timeout=10)
+        hammerfall_window = app.window(title_re=".*Hammerfall DSP Settings.*")
+        return hammerfall_window.exists()
+    except Exception as e:
+        logging.error(f"Error in opening/checking Hammerfall DSP Settings window: {e}")
+        return False
 
 
 def open_totalmix():
+    click_notification_chevron()
+    click_totalmix_tray_button()
+    time.sleep(5)  # Adjust this delay as needed
+
     try:
-        app = Application(backend="uia")
-        app.connect(title_re=".*RME TotalMix FX: HDSP AIO.*")
-        totalmix_window = app.window(title_re=".*RME TotalMix FX: HDSP AIO.*")
-        totalmix_window.set_focus()
-        return totalmix_window
+        # Try to connect to the TotalMix window
+        app = Application(backend="uia").connect(title_re=".*TotalMix.*", timeout=10)
+        totalmix_window = app.window(title_re=".*TotalMix.*")
+        return totalmix_window.exists()
     except Exception as e:
-        logging.error(f"Error opening TotalMix: {e}")
-        return None
+        logging.error(f"Error in opening/checking TotalMix window: {e}")
+        return False
 
 
 def capture_window_screenshot(window):
@@ -446,44 +487,86 @@ def capture_window_screenshot(window):
 
 
 def image_match(reference_image_path, current_view_path):
-    reference_image = cv2.imread(reference_image_path)
-    current_view = cv2.imread(current_view_path)
-    difference = cv2.subtract(reference_image, current_view)
-    return not np.any(difference)  # If difference is all zeros, images are the same
+    try:
+        reference_image = cv2.imread(reference_image_path, 0)  # Load in grayscale
+        current_view = cv2.imread(current_view_path, 0)  # Load in grayscale
+
+        if reference_image is None or current_view is None:
+            logging.error("One of the images is not loaded correctly.")
+            return False
+
+        # Use a method like template matching
+        res = cv2.matchTemplate(current_view, reference_image, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        if max_val > 0.8:  # Adjust threshold as needed
+            return True
+        else:
+            return False
+    except Exception as e:
+        logging.error(f"Error in image comparison: {e}")
+        return False
+
+
+def close_totalmix_window(window):
+    try:
+        if window.exists(timeout=5):
+            window.close()
+            time.sleep(2)  # Wait for the window to close
+    except Exception as e:
+        logging.error(f"Error closing TotalMix window: {e}")
 
 
 def check_audio_card_management():
     logging.info("| C62853 | Checking for RME Hammerfall, please wait...")
-    hammerfall_window = open_hammerfall_dsp_settings()
-    if hammerfall_window is None:
-        logging.error("| C62853 | Failed to open Hammerfall DSP settings window.")
+    if open_hammerfall_dsp_settings():
+        logging.info("| C62853 | Hammerfall DSP settings window opened successfully. Check passed.")
+
+        # Close the Hammerfall DSP settings window
+        try:
+            app = Application(backend="uia").connect(title_re=".*Hammerfall DSP Settings.*")
+            hammerfall_window = app.window(title_re=".*Hammerfall DSP Settings.*")
+            if hammerfall_window.exists(timeout=5):
+                hammerfall_window.close()
+                time.sleep(2)  # Wait for the window to close
+        except Exception as e:
+            logging.error(f"Error closing Hammerfall DSP Settings window: {e}")
+    else:
+        logging.error("| C62853 | Failed to open Hammerfall DSP settings window. Check failed.")
         return False
 
-    time.sleep(5)  # wait for the Hammerfall DSP settings window to open
+    # Close the system tray after checking Hammerfall
+    click_notification_chevron()
 
+    # Proceed to check TotalMix Audio patch
     logging.info("| C62854 | Checking for TotalMix Audio patch, please wait...")
-    totalmix_window = open_totalmix()
-    if totalmix_window is None:
+    if open_totalmix():
+        # If TotalMix opened successfully, proceed with screenshot and comparison
+        totalmix_app = Application(backend="uia").connect(title_re=".*TotalMix.*")
+        totalmix_window = totalmix_app.window(title_re=".*TotalMix.*")
+        current_view_path = capture_window_screenshot(totalmix_window)
+        if current_view_path and image_match('resources/TotalMix.PNG', current_view_path):
+            logging.info("| C62854 | TotalMix matrix view matches reference image. Check passed.")
+        else:
+            logging.error("| C62854 | TotalMix matrix view does not match reference image. Check failed.")
+            return False
+    else:
         logging.error("| C62854 | Failed to open TotalMix window.")
         return False
 
-    # Switch to Matrix View by pressing 'X'
-    send_keys('X')
-    time.sleep(3)  # wait for the view to switch to Matrix
+    # Close the TotalMix window
+    close_totalmix_window(totalmix_window)
 
-    # Capture a screenshot of the TotalMix window
-    current_view_path = capture_window_screenshot(totalmix_window)
-    if current_view_path is None:
-        logging.error("| C62854 | Failed to capture screenshot of TotalMix window.")
-        return False
+    # Delete the screenshot after the check
+    try:
+        if os.path.exists("current_view.png"):
+            os.remove("current_view.png")
+            logging.info("Deleted temporary screenshot file.")
+    except Exception as e:
+        logging.error(f"Error deleting temporary screenshot file: {e}")
 
-    # Compare the screenshot with your reference image
-    if image_match('resources/TotalMix.PNG', current_view_path):
-        logging.info("| C62854 | TotalMix matrix view matches reference image. Test passed.")
-        return True
-    else:
-        logging.error("| C62854 | TotalMix matrix view does not match reference image. Test failed.")
-        return False
+    # Close the system tray after checking TotalMix
+    click_notification_chevron()
+    return True
 
 
 def check_media_drives():

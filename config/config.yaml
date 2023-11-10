@@ -5,9 +5,8 @@ expected_names_25:
   - B - Media 10Gbit
   - C - Media 10Gbit
   - D - 25Gbit
-  - disguiseMGMT
   - E - 25Gbit
-  -
+  - disguiseMGMT
 expected_names_100:
   - A - d3Net 1Gbit
   - B - Media 10Gbit
@@ -42,7 +41,7 @@ audio_devices:
   - Speakers (2- USB Audio Device)
 
 media_drives:
-  expected_drive_letter: 'D:'
+  expected_drive_letter: 'D:\'
   expected_volume_name: 'Media'
 
 raid_controller:
