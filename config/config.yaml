@@ -1,52 +1,72 @@
-# Expected names for network adapters
+network_adapters:
+  expected_names_25:
+    - "A - d3Net 1Gbit"
+    - "B - Media 10Gbit"
+    - "C - Media 10Gbit"
+    - "D - 25Gbit"
+    - "E - 25Gbit"
+    - "disguiseMGMT"
+  expected_names_100:
+    - "A - d3Net 1Gbit"
+    - "B - Media 10Gbit"
+    - "C - Media 10Gbit"
+    - "D - 100Gbit"
+    - "E - 100Gbit"
+    - "disguiseMGMT"
 
-expected_names_25:
-  - A - d3Net 1Gbit
-  - B - Media 10Gbit
-  - C - Media 10Gbit
-  - D - 25Gbit
-  - E - 25Gbit
-  - disguiseMGMT
-expected_names_100:
-  - A - d3Net 1Gbit
-  - B - Media 10Gbit
-  - C - Media 10Gbit
-  - D - 100Gbit
-  - disguiseMGMT
-  - E - 100Gbit
-
-# Expected names for audio devices
 audio_devices:
   expected_input_names:
-  - ADAT (1+2) (RME HDSPe AIO)
-  - ADAT (3+4) (RME HDSPe AIO)
-  - ADAT (5+6) (RME HDSPe AIO)
-  - ADAT (7+8) (RME HDSPe AIO)
-  - AES (1+2) (RME HDSPe AIO)
-  - Analog (1+2) (RME HDSPe AIO)
-  - Microphone (2- USB Audio Device
-  - Microsoft Sound Mapper - Input
-  - SPDIF (RME HDSPe AIO)
-
+    - "ADAT (1+2) (RME HDSPe AIO)"
+    - "ADAT (3+4) (RME HDSPe AIO)"
+    - "ADAT (5+6) (RME HDSPe AIO)"
+    - "ADAT (7+8) (RME HDSPe AIO)"
+    - "AES (1+2) (RME HDSPe AIO)"
+    - "Analog (1+2) (RME HDSPe AIO)"
+    - "Microphone (2- USB Audio Device"
+    - "Microsoft Sound Mapper - Input"
+    - "SPDIF (RME HDSPe AIO)"
   expected_output_names:
-  - ADAT (1+2) (RME HDSPe AIO)
-  - ADAT (3+4) (RME HDSPe AIO)
-  - ADAT (5+6) (RME HDSPe AIO)
-  - ADAT (7+8) (RME HDSPe AIO)
-  - AES (1+2) (RME HDSPe AIO)
-  - Analog (1+2) (RME HDSPe AIO)
-  - Microsoft Sound Mapper - Output
-  - Phones (RME HDSPe AIO)
-  - SPDIF (RME HDSPe AIO)
-  - Speakers (2- USB Audio Device)
+    - "ADAT (1+2) (RME HDSPe AIO)"
+    - "ADAT (3+4) (RME HDSPe AIO)"
+    - "ADAT (5+6) (RME HDSPe AIO)"
+    - "ADAT (7+8) (RME HDSPe AIO)"
+    - "AES (1+2) (RME HDSPe AIO)"
+    - "Analog (1+2) (RME HDSPe AIO)"
+    - "Microsoft Sound Mapper - Output"
+    - "Phones (RME HDSPe AIO)"
+    - "SPDIF (RME HDSPe AIO)"
+    - "Speakers (2- USB Audio Device)"
 
 media_drives:
-  expected_drive_letter: 'D:\'
-  expected_volume_name: 'Media'
+  expected_drive_letter: "D:\\"
+  expected_volume_name: "Media"
 
 raid_controller:
   hardware_id: "PCI\\VEN_1000&DEV_10E2&SUBSYS_40001000&REV_00"
   device_name: "MegaRAID 9560-16i"
   tool_path: "C:\\Program Files\\LSI\\LSIStorageAuthority\\startupLSAUI.bat"
 
+hardware_info:
+  description: ""
+  osHardwarePlatform: ""
+  hasD3Installed: false
+  requiresNotchLicense: false
+  usesCaptureCards: false
+  validateGPUModelName: ""
+  usesHammerfallAudio: false
 
+product_codes:
+  - ProductCode: ""
+    d3Product: ""
+    d3Model: ""
+
+allowed_capture_card_types:
+  - ""
+
+adapter_names:
+  AdapterNames1G:
+    - ""
+  AdapterNames10G:
+    - ""
+  AdapterNames100G:
+    - ""

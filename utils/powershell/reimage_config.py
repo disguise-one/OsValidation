@@ -1,48 +1,58 @@
 import subprocess
 import json
+from utils.logger import logging
 
 
-def get_value_from_powershell(key_name, return_value_should_be_array):
+def get_and_log_config_data():
     subprocess_args = [
         "powershell.exe",
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "C:/path/to/your/script.ps1",
-        key_name
+        "C:\\OsValidation\\utils\\powershell\\reimage_config.ps1"
     ]
-
-    if return_value_should_be_array:
-        subprocess_args.append("-EnforceReturnValueAsArray")
 
     p = subprocess.run(subprocess_args, capture_output=True, text=True)
 
     if p.returncode != 0:
-        print(f"PowerShell script exited with error code {p.returncode}")
-        print(p.stderr)
+        logging.error(f"PowerShell script exited with error code {p.returncode}")
+        logging.error(p.stderr)
         return None
 
     try:
-        return json.loads(p.stdout)
+        data = json.loads(p.stdout)
+        filter_and_log_data(data)
+        return data
     except json.JSONDecodeError as e:
-        print(f"Could not load value [{key_name}] from PowerShell output. Error: {e}")
-        print(f"The command ran on the command line was: {' '.join(subprocess_args)}")
-        print("The output of the command was:")
-        print('---- STDOUT: ----')
-        print(p.stdout)
-        print('---- STDERR: ----')
-        print('\033[91m' + p.stderr + '\033[0m')
-        print('---- ------- ----')
-        return None
+        logging.error(f"Error parsing JSON from PowerShell: {e}")
 
 
-matrox_pin_map_files = get_value_from_powershell("CodeMeterProductCodes", True)
-if matrox_pin_map_files is not None:
-    print(matrox_pin_map_files)
-    try:
-        print(matrox_pin_map_files[0]['ProductCode'])
-    except (IndexError, TypeError):
-        print("The PowerShell output was not in the expected format.")
-else:
-    print('Nothing to print here')
+def filter_and_log_data(data):
+    keys_of_interest = [
+        'description', 'osHardwarePlatform', 'hasD3Installed', 'requiresNotchLicense',
+        'usesCaptureCards', 'AllowedCaptureCardTypes', 'validateGPUModelName',
+        'AdapterNames1G', 'AdapterNames10G', 'AdapterNames100G', 'usesHammerfallAudio'
+    ]
+
+    nested_keys = ['ProductCode', 'd3Product', 'd3Model']
+
+    for key in keys_of_interest:
+        if key in data:
+            logging.info(f"{key}: {data[key]}")
+        else:
+            logging.warning(f"Key '{key}' not found in the data.")
+
+    if 'CodeMeterProductCodes' in data:
+        for entry in data['CodeMeterProductCodes']:
+            for nested_key in nested_keys:
+                if nested_key in entry:
+                    logging.info(f"{nested_key}: {entry[nested_key]}")
+                else:
+                    logging.warning(f"Nested key '{nested_key}' not found in CodeMeterProductCodes.")
+    else:
+        logging.warning("Key 'CodeMeterProductCodes' not found in the data.")
+
+
+# Call the function
+get_and_log_config_data()

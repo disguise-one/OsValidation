@@ -671,4 +671,4 @@ def check_raid_tool():
         subprocess.Popen(raid_tool_path)
         logging.info("| C62856 | RAID controller tool opened successfully.")
     except FileNotFoundError:
-        logging.error(f"| C62856 | ERROR: RAID controller tool not found at {raid_tool_path}.")
+        logging.error(f"| C62856 | RAID controller tool not found at {raid_tool_path}.")
