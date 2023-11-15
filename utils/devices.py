@@ -297,7 +297,7 @@ def _check_deltacast_devices():
         if "DELTA" in (device.Caption or "").upper():
             logging.info("| C62850 | Deltacast driver detected in Device Manager.")
             break
-        else:
+        else:  # This 'else' is associated with the 'for' loop
             logging.error("| C62850 | Deltacast driver not detected in Device Manager.")
             return False
 
@@ -312,7 +312,7 @@ def _check_deltacast_devices():
             logging.error('| C62850 | dCARE failed to load.')
             return False
     else:
-        logging.error('| C62850 | Error: dCARE executable not found.')
+        logging.error(f'| C62850 | Error: dCARE executable not found at {dcare_exe}.')
         return False
 
 
