@@ -297,9 +297,9 @@ def _check_deltacast_devices():
         if "DELTA" in (device.Caption or "").upper():
             logging.info("| C62850 | Deltacast driver detected in Device Manager.")
             break
-    else:
-        logging.error("| C62850 | Deltacast driver not detected in Device Manager.")
-        return False
+        else:
+            logging.error("| C62850 | Deltacast driver not detected in Device Manager.")
+            return False
 
     dcare_exe = r"C:\Program Files\deltacast\dCARE\bin\dCARE.exe"
     if os.path.exists(dcare_exe):
