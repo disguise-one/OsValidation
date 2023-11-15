@@ -32,15 +32,12 @@ def load_config():
     try:
         with open(config_path, 'r') as f:
             CONFIG = yaml.safe_load(f)
+            # print("Loaded CONFIG:", CONFIG)  # Debugging line if needed
         if CONFIG is None:
             raise ValueError("Configuration is empty")
     except Exception as e:
         logging.error(f"Failed to load configuration: {e}")
         CONFIG = {}
-
-
-# Call load_config  to load the configuration
-load_config()
 
 
 def check_general_devices():
@@ -208,8 +205,13 @@ def check_network_devices():
 
     # Use the global CONFIG variable
     global CONFIG
-    expected_names_25 = set(CONFIG["expected_names_25"])
-    expected_names_100 = set(CONFIG["expected_names_100"])
+    if CONFIG and "network_adapters" in CONFIG:
+        network_adapters_config = CONFIG["network_adapters"]
+        expected_names_25 = set(network_adapters_config["expected_names_25"])
+        expected_names_100 = set(network_adapters_config["expected_names_100"])
+    else:
+        logging.error("Configuration for network adapters is not found or invalid.")
+        return False
 
     wmi_obj = wmi.WMI()
     adapters = wmi_obj.Win32_NetworkAdapter()
@@ -363,8 +365,8 @@ def check_audio_devices():
     """
 
     global CONFIG
-    EXPECTED_INPUT_NAMES = CONFIG["audio_devices"]["expected_input_names"]
-    EXPECTED_OUTPUT_NAMES = CONFIG["audio_devices"]["expected_output_names"]
+    expected_input_names = CONFIG["audio_devices"]["expected_input_names"]
+    expected_output_names = CONFIG["audio_devices"]["expected_output_names"]
     logging.info("| C62852 | Checking for Audio devices, please wait...")
 
     # Check for audio devices by their hardware IDs
@@ -396,12 +398,12 @@ def check_audio_devices():
     for i, name in enumerate(output_device_names):
         logging.info(f"| C62852 | {i + 1}. {name}")
 
-    if set(EXPECTED_INPUT_NAMES) == set(input_device_names) and set(EXPECTED_OUTPUT_NAMES) == set(output_device_names):
+    if set(expected_input_names) == set(input_device_names) and set(expected_output_names) == set(output_device_names):
         logging.info("| C62852 | Audio devices check passed")
         return True
     else:
-        missing_input_devices = set(EXPECTED_INPUT_NAMES) - set(input_device_names)
-        missing_output_devices = set(EXPECTED_OUTPUT_NAMES) - set(output_device_names)
+        missing_input_devices = set(expected_input_names) - set(input_device_names)
+        missing_output_devices = set(expected_output_names) - set(output_device_names)
         logging.error(f"| C62852 | Missing input devices: {', '.join(missing_input_devices)}")
         logging.error(f"| C62852 | Missing output devices: {', '.join(missing_output_devices)}")
         return False
@@ -434,7 +436,8 @@ def click_totalmix_tray_button():
             logging.error("System tray overflow window not found.")
             return False
 
-        totalmix_button = system_tray.child_window(title="Restore / Minimize all TotalMix FX Windows", control_type="Button")
+        totalmix_button = system_tray.child_window(title="Restore / Minimize all TotalMix FX Windows",
+                                                   control_type="Button")
         if not totalmix_button.exists():
             logging.error("TotalMix tray button not found.")
             return False
@@ -672,3 +675,40 @@ def check_raid_tool():
         logging.info("| C62856 | RAID controller tool opened successfully.")
     except FileNotFoundError:
         logging.error(f"| C62856 | RAID controller tool not found at {raid_tool_path}.")
+
+
+def main():
+    """
+    Main function to orchestrate device checks.
+    """
+    load_config()  # Load configuration
+
+    # Calls to the device check functions here
+    check_general_devices()
+    detect_gpu_brand()
+    check_general_devices()
+    detect_gpu_brand()
+    check_gpu_devices()
+    check_gpu_control_panel(path, exe_name, control_panel_name, open_panel=False)
+    check_network_devices()
+    check_capture_card_devices()
+    _check_deltacast_devices()
+    _check_matrox_devices()
+    detect_audio_device_by_hardware_id()
+    check_audio_devices()
+    click_notification_chevron()
+    click_hammerfall_dsp_settings()
+    click_totalmix_tray_button()
+    open_hammerfall_dsp_settings()
+    open_totalmix()
+    capture_window_screenshot(window)
+    image_match(reference_image_path, current_view_path)
+    close_totalmix_window(window)
+    check_audio_card_management()
+    check_media_drives()
+    detect_raid_controller()
+    check_raid_tool()
+
+
+if __name__ == "__main__":
+    main()

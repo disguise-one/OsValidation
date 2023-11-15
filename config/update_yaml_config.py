@@ -44,7 +44,6 @@ def update_yaml_config(data, yaml_file_path):
         yaml_dump(config, stream=file)
 
 
-# Example usage
 # Assuming 'all_config_data' contains the data retrieved from the PowerShell script
 all_config_data = get_and_log_config_data()
 update_yaml_config(all_config_data, 'C:\OsValidation\config\config.yaml')
