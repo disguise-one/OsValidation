@@ -674,11 +674,14 @@ def detect_raid_controller():
     c = wmi.WMI()
 
     for device in c.Win32_PnPEntity():
-        # Ensure that HardwareID and Name are iterable before checking
-        if device.HardwareID and raid_hardware_id in device.HardwareID:
+        # Continue to next device if either HardwareID or Name is not available
+        if not device.HardwareID or not device.Name:
+            continue
+
+        # Check if both hardware ID and device name match
+        if raid_hardware_id in device.HardwareID and raid_device_name.lower() in device.Name.lower():
             return True
-        if device.Name and raid_device_name.lower() in device.Name.lower():
-            return True
+
     return False
 
 
