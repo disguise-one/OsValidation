@@ -38,8 +38,10 @@ audio_devices:
     - "Speakers (2- USB Audio Device)"
 
 media_drives:
-  expected_drive_letter: "D:\\"
-  expected_volume_name: "Media"
+  windows_drive_letter: "C:\\"
+  windows_volume_name: "Windows"
+  media_drive_letter: "D:\\"
+  media_volume_name: "Media"
 
 raid_controller:
   hardware_id: "PCI\\VEN_1000&DEV_10E2&SUBSYS_40001000&REV_00"

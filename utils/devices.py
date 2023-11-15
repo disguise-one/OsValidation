@@ -590,9 +590,11 @@ def check_audio_card_management():
 def check_media_drives():
     """
     Checks for the presence of expected media drives based on the global CONFIG variable.
+    Also checks to ensure no extra 'media' drives are present.
 
     Returns:
-        list: A list of dictionaries, each containing details of a media drive found in the system.
+        tuple: A tuple containing a boolean indicating success or failure, and a list of dictionaries,
+               each containing details of a media drive found in the system.
 
     Side effects:
         - Logs messages about the media drives check progress and results.
@@ -600,8 +602,10 @@ def check_media_drives():
     """
 
     global CONFIG
-    expected_drive_letter = CONFIG['media_drives']['expected_drive_letter']
-    expected_volume_name = CONFIG['media_drives']['expected_volume_name']
+    expected_drive_letter = CONFIG['media_drives']['media_drive_letter']
+    expected_volume_name = CONFIG['media_drives']['media_volume_name']
+    windows_drive_letter = CONFIG['media_drives'].get('windows_drive_letter', 'C:\\')
+    windows_volume_name = CONFIG['media_drives'].get('windows_volume_name', 'Windows')
 
     logging.info("| C62855 | Checking for media drives, please wait...")
     media_drives = []
@@ -633,18 +637,27 @@ def check_media_drives():
             logging.info(
                 f"| C62855 | {drive['drive_letter']} - {drive['name']} - {drive['filesystem']} - {drive['size']}")
 
+        # Check for the Media drive
         media_drive_found = any(
-            drive['name'] == expected_volume_name and drive['drive_letter'] == expected_drive_letter for drive in
-            media_drives)
-        if media_drive_found:
-            logging.info("| C62855 | Media drive check passed")
+            drive['name'] == expected_volume_name and drive['drive_letter'] == expected_drive_letter for drive in media_drives)
+
+        # Check for the Windows drive
+        windows_drive_found = any(
+            drive['name'] == windows_volume_name and drive['drive_letter'] == windows_drive_letter for drive in media_drives)
+
+        # Check for extra media drives
+        extra_media_drives = [drive for drive in media_drives if drive['name'] == expected_volume_name and drive['drive_letter'] != expected_drive_letter]
+
+        if media_drive_found and windows_drive_found and not extra_media_drives:
+            logging.info("| C62855 | Media and Windows drive check passed")
+            return True, media_drives
         else:
-            logging.error("| C62855 | Media drive check failed")
+            logging.error("| C62855 | Media and/or Windows drive check failed. Extra or missing media drives detected.")
+            return False, media_drives
 
     except Exception as e:
         logging.error(f"| C62855 | An error occurred while checking media drives: {e}")
-
-    return media_drives
+        return False, media_drives
 
 
 def detect_raid_controller():
