@@ -425,12 +425,23 @@ def click_notification_chevron():
 
 def click_hammerfall_dsp_settings():
     try:
-        # Connect to the system tray and click the Hammerfall DSP Settings button
+        # Connect to the system tray
         system_tray = Desktop(backend="uia").window(class_name="NotifyIconOverflowWindow")
+        if not system_tray.exists():
+            logging.error("System tray overflow window not found.")
+            return False
+
+        # Locate and click the Hammerfall DSP Settings button
         hammerfall_button = system_tray.child_window(title="Hammerfall DSP Settings", control_type="Button")
+        if not hammerfall_button.exists():
+            logging.error("Hammerfall DSP Settings button not found.")
+            return False
+
         hammerfall_button.click_input()
+        return True
     except Exception as e:
         logging.error(f"Error clicking Hammerfall DSP Settings button: {e}")
+        return False
 
 
 def click_totalmix_tray_button():
