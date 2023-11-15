@@ -108,7 +108,7 @@ def check_gpu_devices(open_panel=False):
     Checks if the appropriate GPU control panel is present for the detected GPU brand and optionally opens it.
 
     Parameters:
-        open_panel (bool): If True, the function will attempt to open the GPU control panel and will prompt
+        open_panel (bool): If True, the function will attempt to open the GPU control panel and prompt
                            the user for confirmation.
 
     Returns:
@@ -122,27 +122,31 @@ def check_gpu_devices(open_panel=False):
     # Log the start of the GPU check
     logging.info("Checking GPU, please wait...")
 
-    # Define paths to AMD and NVIDIA control panels
-    amd_path = os.path.join(os.environ['ProgramFiles'], 'AMD')
-    nvidia_path = os.path.join(os.environ['ProgramFiles'], 'NVIDIA Corporation')
-
     # Detect the GPU brand and its hardware ID
     gpu_brand, hardware_id = detect_gpu_brand()
 
+    # If no hardware ID is found, log a failure message and return False
+    if not hardware_id:
+        logging.error("Failed to detect GPU Hardware ID.")
+        return False
+
     # Log the detected GPU hardware ID
-    if hardware_id:
-        logging.info(f"Detected GPU with Hardware ID: {hardware_id}")
-        logging.info("Checking GPU Vendor, please wait...")
+    logging.info(f"Detected GPU with Hardware ID: {hardware_id}")
+    logging.info("Checking GPU Vendor, please wait...")
+
+    # Define paths to AMD and NVIDIA control panels
+    amd_path = os.path.join(os.environ['ProgramFiles'], 'AMD')
+    nvidia_path = os.path.join(os.environ['ProgramFiles'], 'NVIDIA Corporation')
 
     # Check the GPU brand and validate the respective control panel
     if gpu_brand == 'amd':
         logging.info("Detected an AMD GPU.")
         return check_gpu_control_panel(amd_path, 'CNext\\Cnext\\RadeonSoftware.exe', 'AMD', open_panel)
     elif gpu_brand == 'nvidia':
-        logging.info("Detected an nvidia GPU.")
+        logging.info("Detected an Nvidia GPU.")
         return check_gpu_control_panel(nvidia_path, 'Control Panel Client\\nvcplui.exe', 'Nvidia', open_panel)
     else:
-        logging.info('No recognized GPU or control panel found.', "error")
+        logging.error('No recognized GPU or control panel found.')
         return False
 
 
