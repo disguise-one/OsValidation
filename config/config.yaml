@@ -72,3 +72,22 @@ adapter_names:
     - ""
   AdapterNames100G:
     - ""
+
+windows_settings:
+  windows_allowed_apps:
+    - "mspaint"
+    - "mip"
+    - "SnippingTool"
+    - "psr"
+    - "notepad"
+    - "wordpad"
+    - "charmap"
+    - "mstsc"
+
+  chrome_bookmark_urls:
+    - "https://www.disguise.one/en/"    #This one NEEDS to be the home page
+    - "https://help.disguise.one/en/Content/Home.htm"
+    - "https://download.disguise.one/"
+
+  chrome_home_url:
+    - "https://www.disguise.one/"

@@ -16,5 +16,10 @@ colorlog~=6.7.0
 pywinauto~=0.6.8
 Pillow~=10.1.0
 Numpy~=1.26.1
+pytest
+pypiwin32
+pywintypes
+pyyaml
 opencv-python
+testrail
 

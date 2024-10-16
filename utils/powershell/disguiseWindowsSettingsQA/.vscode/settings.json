@@ -1,0 +1,13 @@
+{
+    // When enabled, will trim trailing whitespace when you save a file.
+    "files.trimTrailingWhitespace": true,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.fontSize": 14,
+    "editor.renderWhitespace": "all",
+    "editor.wordWrap": false,
+    "files.eol": "\r\n",
+    "workbench.colorTheme": "Visual Studio Dark",
+    "window.zoomLevel": 0,
+}
