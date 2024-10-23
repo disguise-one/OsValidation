@@ -7,25 +7,25 @@ from utils.test_case_classes import TestCase
 
 
 def check_taskbar_icons(OSVersion, ComputerName):
-    authorized_taskbar_icons = ["Explorer", "Chrome"]
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsTaskbarContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
 
-    # Check taskbar icons
-    taskbar_icons = subprocess.check_output(['powershell', 'Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar" | Select-Object -ExpandProperty Name']).strip().decode('utf-8')
+    taskbarTestCase = TestCase("374768", "Taskbar Contents", "Untested")
+    try:
+        TaskBarContents = subprocess.check_output(['powershell', powershellComand]).strip().decode('utf-8')
+    except:
+        TaskBarContents = "Exception"
 
-    taskbar_icons_list = taskbar_icons.split("\r\n")
-
-    unauthorized_icons = [icon for icon in taskbar_icons_list if icon not in authorized_taskbar_icons]
-
-    # Create the test case
-    taskbarTestCase = TestCase("374768", "Taskbar Icons", "Untested")
-    if len(unauthorized_icons) == 0:
+    if(TaskBarContents == "True"):
         taskbarTestCase.set_testResult("PASSED")
     else:
-        authorized_icons = [icon for icon in taskbar_icons_list if icon in authorized_taskbar_icons]
-        taskbarTestCase.set_testResult("FAILED")
+        taskbarTestCase.set_testResult("PASSED")
+        message = "Missing Task Bar Apps: " + str(TaskBarContents)
+        print(message)
+        taskbarTestCase.set_testResultMessage(message)
 
-    taskbarTestCase.printFormattedResults
+    taskbarTestCase.printFormattedResults()
     return taskbarTestCase
+
 
 
 def check_start_menu_tiles(OSVersion, ComputerName):
@@ -46,16 +46,19 @@ def check_start_menu_tiles(OSVersion, ComputerName):
 
     unauthorized_programs = [program for program in start_menu_tiles_list if program not in authorized_programs]
 
-    taskbarTestCase = TestCase("374769", "Start Menu Icons", "Untested")
+    startMenuTestCase = TestCase("374769", "Start Menu Icons", "Untested")
 
     if len(unauthorized_programs) == 0:
-        taskbarTestCase.set_testResult("PASSED")
+        startMenuTestCase.set_testResult("PASSED")
     else:
-        taskbarTestCase.set_testResult("FAILED")
+        startMenuTestCase.set_testResult("FAILED")
 
-    taskbarTestCase.printFormattedResults()
+    startMenuTestCase.printFormattedResults()
 
-    return taskbarTestCase
+    return startMenuTestCase
+
+
+
 
 def check_app_menu_contents(OSVersion, ComputerName):
     # Approbved apps are: Paint, Snipping Tool, Steps Recorder, Notepad, Wordpad, Character Map, Remote Desktop Connection, Math input

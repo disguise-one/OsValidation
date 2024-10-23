@@ -91,3 +91,13 @@ windows_settings:
 
   chrome_home_url:
     - "https://www.disguise.one/"
+
+  taskbar_apps:
+    - "File Explorer"
+    - "Google Chrome"
+  
+  start_menu_apps_default:
+    - "Google Chrome"
+    - "d3manager"
+    - "Media Player Classic"
+    - "Recycle Bin"

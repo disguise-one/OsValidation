@@ -6,7 +6,7 @@ if(firstTimeRun == True):
     print("Starting OS QA checking:")
 
 
-from utils import file_handling, windows_settings, devices, d3_interaction, useful_utilities
+from utils import file_handling, windows_settings, d3_interaction, useful_utilities
 from utils.logger import logging
 from utils import testrail
 import subprocess
@@ -34,7 +34,7 @@ def run_validation_group(validation_functions, group_name, OSVersion, MachineNam
     """
     TestRunArray = []
     try:
-        logging.info(f"Running {group_name}, please wait...")
+        logging.info(f"--- Running Test Group {group_name} ---")
         for function in validation_functions:
             TestRunArray.append(function(OSVersion, MachineName))
         return TestRunArray

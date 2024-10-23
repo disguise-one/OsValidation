@@ -8,9 +8,110 @@ try{
     Import-Module powershell-yaml
 }
 
-Import-Module "..\d3ModelConfigImporter" -Force
+$d3ModelConfigPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3ModelConfigImporter"
+$d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
+Import-Module $d3ModelConfigPath -Force
+Import-Module $d3OSQAUtilsPath -Force
 
 $computerName = $env:computername -replace "-.*"
+
+function Get-AndTestWindowsTaskbarContents{
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName
+    )
+    $TaskbarPinnedContents = Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar" | Select-Object -ExpandProperty Name
+    # Using a traditional for loop as i need to index through the array and change values
+    for($i = 0; $i -lt $TaskbarPinnedContents.length; $i++){
+        # Removing the duplicates that sometimes get put in in the form of 'File Explorer.lnk', 'File Explorer (2).lnk' -> We dont want this to fail the test
+        if($TaskbarPinnedContents[$i] -match " \(2\)"){
+            $TaskbarPinnedContents[$i] = $TaskbarPinnedContents[$i] -replace " \(2\)", ""
+        }
+        $TaskbarPinnedContents[$i] = $TaskbarPinnedContents[$i] -replace ".lnk", ""
+    }
+    
+    # Take out the reformatted dupliactes
+    $TaskbarPinnedContents = $TaskbarPinnedContents | select -Unique
+
+    # Get the config file
+    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $allowedTaskBarApps = $testConfig.Windows_settings.taskbar_apps
+
+    $MissingApps = @()
+    foreach($TestApp in $allowedTaskBarApps){
+        if($TaskbarPinnedContents -notcontains $TestApp){
+            $MissingApps += $TestApp
+        }
+    }
+
+    if($MissingApps.count -gt 0){
+        return $MissingApps
+    }else{
+        return $true
+    }
+}
+
+
+function Get-AndTestWindowsStartMenuContents{
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName
+    )
+    # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
+    $LayoutPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\temp"
+    #$LayoutPath = "temp\StartMenuLayout.xml"
+    Write-Host $PSScriptRoot
+    Test-Path $LayoutPath
+    if(-not (Test-Path $LayoutPath)){
+        New-Item -path $LayoutPath -Name "temp" -ItemType "directory"
+    }
+
+    # If the XML exists we want to delete it and overwrite it
+    $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.xml"
+    if(Test-Path -path $LayoutPath){
+        Remove-item -path $LayoutPath -Force
+    }
+
+    # Export the layout
+    try{
+        Export-StartLayout -Path $LayoutPath
+    }catch{
+        Remove-item -path $LayoutPath -Force
+        Export-StartLayout -Path $LayoutPath
+    }
+
+    # Read the content
+    # [xml]$LayoutContent = Get-Content -Path $LayoutPath
+    $LayoutContent = Get-Content -Path $LayoutPath
+    # Oh wait, the format of the MICROSOFT provided XML is incompatable with the MICROSOFT powershell's XML parser. Nice!
+    # So we're going to have to just parse the text using a regex
+    $StartMenuApps = [regex]::Matches($LayoutContent, "\\\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
+
+    # Check if default apps are in there
+    # Get the contents of the config file
+    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $defaultStartMenuApps = $testConfig.Windows_settings.start_menu_apps_default
+
+    $missingApps = @()
+
+    foreach($TestApp in $defaultStartMenuApps){
+        if($StartMenuApps -notcontains $TestApp){
+            $missingApps += $TestApp
+        }
+    }
+
+    # Then go through the model specific config file to see if there are any component specific apps that need to be opened - Write a function for this as there
+    # Will be multiple uses
+
+}
+
+function Get-ModelSpecificApps{
+    
+}
 
 function Get-AndTestWindowsAppMenuContents{
     param(        
