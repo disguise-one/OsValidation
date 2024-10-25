@@ -1,6 +1,6 @@
 # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
 from utils.auto_import import import_or_install
-firstTimeRun = False    # <- set this to true to check
+firstTimeRun = True    # <- set this to true to check
 if(firstTimeRun == True):
     import_or_install("requirements.txt")
     print("Starting OS QA checking:")
