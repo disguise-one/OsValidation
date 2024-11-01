@@ -27,34 +27,28 @@ def check_taskbar_icons(OSVersion, ComputerName):
     return taskbarTestCase
 
 
-
+# To do: Make a function in POWERSHELL module that will take the model configs and identify which apps should be installed
 def check_start_menu_tiles(OSVersion, ComputerName):
-    authorized_programs = ["Chrome", "d3manager", "Media Player Classic", "Recycle Bin"]
 
-    # Check start menu tiles
-    start_menu_tiles = subprocess.check_output(['powershell', 'Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs" -Recurse | Where-Object {$_.Extension -eq ".lnk"} | Select-Object -ExpandProperty Name']).strip().decode('utf-8')
+    # Create the powershell command
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsStartMenuContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
 
-    # Collect the evidence
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-StartMenuEvidence -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
-
+    # Execute it
     try:
         StartMenuContents = subprocess.check_output(['powershell', powershellComand]).strip().decode('utf-8')
     except:
         StartMenuContents = "Exception"
-    
-    start_menu_tiles_list = start_menu_tiles.split("\r\n")
-
-    unauthorized_programs = [program for program in start_menu_tiles_list if program not in authorized_programs]
 
     startMenuTestCase = TestCase("374769", "Start Menu Icons", "Untested")
 
-    if len(unauthorized_programs) == 0:
-        startMenuTestCase.set_testResult("PASSED")
+    if StartMenuContents == "BLOCKED":
+        startMenuTestCase.set_testResult(StartMenuContents)
+        startMenuTestCase.set_testResultMessage("All default apps installed. You now need to check that the model specific apps (eg: dCARE) are installed")
     else:
         startMenuTestCase.set_testResult("FAILED")
+        startMenuTestCase.set_testResultMessage("Missing Apps: " + str(StartMenuContents))
 
     startMenuTestCase.printFormattedResults()
-
     return startMenuTestCase
 
 
@@ -63,6 +57,7 @@ def check_start_menu_tiles(OSVersion, ComputerName):
 def check_app_menu_contents(OSVersion, ComputerName):
     # Approbved apps are: Paint, Snipping Tool, Steps Recorder, Notepad, Wordpad, Character Map, Remote Desktop Connection, Math input
     # Needs to find calculator
+    
     powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsAppMenuContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
 
     AppMenuTestCase = TestCase("374770", "App Menu Contents", "Untested")
@@ -71,38 +66,14 @@ def check_app_menu_contents(OSVersion, ComputerName):
     except:
         AppMenuContents = "Exception"
 
-    if('False' in AppMenuContents):
-        AppMenuTestCase.set_testResult("FAILED")
-        # Need to find which apps failed
+    Message = "Manual Check Required: Please ensure Snipping Tool is installed. "
 
-        AppMenuContents = AppMenuContents.split('\r\n')
-        # first open the config, brows to windows allowed apps
-
-        with open("config\\config.yaml") as stream:
-            try:
-                config = yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                print(exc)
-
-        # loop through the AppMenuContents and find the index of each false in the results
-        failed_apps = []
-        failed_app_message = ""
-        for index in range(len(config["windows_settings"]["windows_allowed_apps"])):
-            # find the app matching that index
-            if(AppMenuContents[index] == 'False'):
-                # add to a list of failed apps
-                failed_apps.append(config["windows_settings"]["windows_allowed_apps"][index])
-                if len(failed_apps) == 1:
-                    failed_app_message = "Missing Apps: " + config["windows_settings"]["windows_allowed_apps"][index]
-                else:
-                    failed_app_message += ", " + config["windows_settings"]["windows_allowed_apps"][index]
-
-        # call the set_testResultMessage method of the testCase class and store the failed apps
-        AppMenuTestCase.set_testResultMessage(failed_app_message)
-    elif(AppMenuContents == "Exception"):
-        AppMenuTestCase.set_testResult("FAILED")
+    if(AppMenuContents == "BLOCKED"):
+        AppMenuTestCase.set_testResult(AppMenuContents)
+        AppMenuTestCase.set_testResultMessage(Message)
     else:
-        AppMenuTestCase.set_testResult("PASSED")
+        AppMenuTestCase.set_testResult("FAILED")
+        AppMenuTestCase.set_testResultMessage(Message + " Additionally, these apps are not installed: " + str(AppMenuContents))
 
     AppMenuTestCase.printFormattedResults()
         
@@ -210,7 +181,7 @@ def check_machine_name(OSVersion, ComputerName):
 
 def check_notifications_disabled(OSVersion, ComputerName):
 
-    notificationTestCase = TestCase("374729", "Machine Name", "UNTESTED")
+    notificationTestCase = TestCase("374729", "Notifications Disabled", "UNTESTED")
 
     try:
         notifications_disabled = subprocess.check_output(['powershell', 'Get-ItemPropertyValue -Path "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications" -Name "NoToastApplicationNotification"']).strip().decode('utf-8')
@@ -228,15 +199,51 @@ def check_notifications_disabled(OSVersion, ComputerName):
 
 
 def check_windows_update_disabled(OSVersion, ComputerName):
-    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU') as key:
-        try:
-            value, _ = winreg.QueryValueEx(key, 'NoAutoUpdate')
-            if value == 1:
-                print("| C62839 | Windows Update: DISABLED")
-            else:
-                print("| C62839 | Windows Update: ENABLED")
-        except OSError:
-            print("| C62839 | Windows Update: ENABLED")
+    # Setup the test case
+    windowsUpdateTestCase = TestCase("374730", "Update Disabled", "UNTESTED")
+
+    # Check if windows updates are enabled
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsUpdateEnabled -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    windowsUpdateTestStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
+
+    windowsUpdateTestCase.set_testResult(windowsUpdateTestStatus)
+    windowsUpdateTestCase.printFormattedResults()
+
+    return windowsUpdateTestCase
+
+
+def check_VFC_overlay(OSVersion, ComputerName):
+    # Setup the test case
+    VFCOverlayTestCase = TestCase("374734", "VFC Overlay", "UNTESTED")
+
+    # Check if windows updates are enabled
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-VFCOverlay -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    VFCOverlayTestStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
+
+    VFCOverlayTestCase.set_testResult(VFCOverlayTestStatus)
+    VFCOverlayTestCase.printFormattedResults()
+
+    return VFCOverlayTestCase
+
+
+def check_firewall_disabled(OSVersion, ComputerName):
+    # Setup the test case
+    firewallTestCase = TestCase("374731", "Windows Firewall Disabled", "UNTESTED")
+
+    # Check if firewall is disabled
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsFirewallDisabled -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    firewallStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
+
+    if(firewallStatus == "PASSED"):
+        firewallTestCase.set_testResult(firewallStatus)
+    else:
+        firewallTestCase.set_testResult("FAILED")
+        firewallTestCase.set_testResultMessage(firewallStatus)
+
+    firewallTestCase.printFormattedResults()
+
+    return firewallTestCase
+
 
 
 def check_sticky_keys_disabled(OSVersion):

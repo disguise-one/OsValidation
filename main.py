@@ -154,7 +154,10 @@ def main():
             windows_settings.check_chrome_homepage,
             windows_settings.check_chrome_bookmarks,
             windows_settings.check_machine_name,
-            windows_settings.check_notifications_disabled
+            windows_settings.check_notifications_disabled,
+            windows_settings.check_VFC_overlay,
+            windows_settings.check_windows_update_disabled,
+            windows_settings.check_firewall_disabled
         ]
         windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion, ServerName)
 
@@ -163,9 +166,12 @@ def main():
             # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
             while True:
                 result = None
-                result = client.send_post('add_result_for_case/' + str(runRequrestResponse['id']) + '/' + str(testcase.get_testCode()), {
-                    'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
-                })
+                try:
+                    result = client.send_post('add_result_for_case/' + str(runRequrestResponse['id']) + '/' + str(testcase.get_testCode()), {
+                        'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
+                    })
+                except Exception as e: print("An error occured when communicating with TestRail API: " + str(e))
+
                 if(result != None):
                     break
                 else:

@@ -63,17 +63,14 @@ function Get-AndTestWindowsStartMenuContents{
     )
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
     $LayoutPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\temp"
-    #$LayoutPath = "temp\StartMenuLayout.xml"
-    Write-Host $PSScriptRoot
-    Test-Path $LayoutPath
     if(-not (Test-Path $LayoutPath)){
-        New-Item -path $LayoutPath -Name "temp" -ItemType "directory"
+        New-Item -path $LayoutPath -Name "temp" -ItemType "directory" | Out-Null
     }
 
     # If the XML exists we want to delete it and overwrite it
     $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.xml"
     if(Test-Path -path $LayoutPath){
-        Remove-item -path $LayoutPath -Force
+        Remove-item -path $LayoutPath -Force | Out-Null
     }
 
     # Export the layout
@@ -104,13 +101,17 @@ function Get-AndTestWindowsStartMenuContents{
         }
     }
 
-    # Then go through the model specific config file to see if there are any component specific apps that need to be opened - Write a function for this as there
-    # Will be multiple uses
 
-}
+    Get-StartMenuEvidence -OSVersion $OSVersion -userInputMachineName $userInputMachineName
+    # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
+    # not checked for
 
-function Get-ModelSpecificApps{
-    
+    if($missingApps){
+        return $missingApps
+    }else{
+        return "BLOCKED"
+    }
+
 }
 
 function Get-AndTestWindowsAppMenuContents{
@@ -129,13 +130,6 @@ function Get-AndTestWindowsAppMenuContents{
     $appCheckingNamesArray = $testConfig.Windows_settings.windows_allowed_apps
     $appTestingPresenceArray = @()
 
-    $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
-    # may be not the best method of doing it as this is hardcoded locations, which may break the script, however we shouldnt put them in the disguise power config
-    if($modelConfig.AllowedCaptureCardTypes -Contains "DELTACAST"){
-        $appCheckingNamesArray += "C:\Program Files\Deltacast\dCARE\bin\dCARE"
-        $appCheckingNamesArray += "C:\Program Files\Deltacast\dSCOPE\bin\dSCOPE"
-    }
-
     #We loop through the checking names array
     foreach($appName in $appCheckingNamesArray){
         #open the job via a start job command so we can tell if it has executed or not
@@ -145,7 +139,7 @@ function Get-AndTestWindowsAppMenuContents{
         }
 
         #Wait for app to open
-        start-sleep -Seconds 1
+        start-sleep -Seconds 2
 
         # Gather evidence - Sometimes the copy buffer messes up, so we retry until there is a success
         $imagePath = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "$($appName).bmp"
@@ -153,13 +147,18 @@ function Get-AndTestWindowsAppMenuContents{
         Get-PrintScreenandRetryIfFailed -PathAndFileName $imagePath | Out-Null
 
         # Check the state and add to the array. Kill the app
-        $appTestingPresenceArray += if ($null -eq (Get-Process | Where-Object {$_.ProcessName -eq $appName})){$false}else{$true}
+        # If the app is not present we add it to the list of apps
+        $appTestingPresenceArray += if (-not(Get-Process | Where-Object {$_.ProcessName -eq $appName})){$appName}
         Get-Process | Where-Object {$_.ProcessName -eq $appName} | Stop-Process
 
     }
 
     #return the array
-    return $appTestingPresenceArray
+    if($appTestingPresenceArray){
+        return $appTestingPresenceArray
+    }else{
+        return "BLOCKED"    #We return blocked as there are some manual checks needed
+    }
 }
 
 function Get-StartMenuEvidence{
@@ -255,7 +254,7 @@ function Test-ChromeHistory{
     # See if it isnt a disguise website
     $nonDisguiseWebsite = $false
     foreach($site in $history.data){
-        if($site -notmatch "disguise"){
+        if(($site -notmatch "disguise") -or ($site -notmatch "codemeter")){
             $nonDisguiseWebsite = $true
         }
     }
@@ -311,7 +310,7 @@ function Test-ChromeBookmarks{
     # Getting the chrome bookmarks and converting from JSON
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\Bookmarks"
     if (-not (Test-Path -Path $Path)) {
-        Write-Verbose "[!] Could not find Chrome Bookmarks for username: $UserName"
+        Write-Verbose "[!] Could not find Chrome Bookmarks for user: $Env:USERNAME"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
 
@@ -322,21 +321,28 @@ function Test-ChromeBookmarks{
 
     # Setting up the missing bookmarks STRING
     $missingBookmarks = ""
+    $requiredBookmarkList = ""
 
     # Loop through each actual bookmarks, and seeing if it doesnt appear in the required bookmarks
-    foreach($bookmark in $actualBookmarks){
-        if(-not ($bookmark -in $requiredBookmarkURLs)){
+    for($index = 0; $index -lt $actualBookmarks.length; $index++){
+        if(-not($actualBookmarks[$index] -in $requiredBookmarkURLs)){
             if(-not $missingBookmarks){
-                $missingBookmarks = "Missing Bookmarks: $($bookmark)"
+                $missingBookmarks = "Missing Bookmarks: $($actualBookmarks[$index])"
             }else{
-                $missingBookmarks += ", $($bookmark)"
+                $missingBookmarks += ", $($actualBookmarks[$index])"
+            }
+
+            if(-not $requiredBookmarkList){
+                $requiredBookmarkList = "Required Bookmarks: $($requiredBookmarkURLs[$index])"
+            }else{
+                $requiredBookmarkList += ", $($requiredBookmarkURLs[$index])"
             }
         }
     }
 
     # Check if the missing bookmarks are filled
     if($missingBookmarks){
-        return $missingBookmarks
+        return "$($missingBookmarks). $($requiredBookmarkList)"
     }else{
         return $true
     }
@@ -441,18 +447,63 @@ function Test-WindowsUpdateEnabled{
         [Parameter(Mandatory=$true)]
         [String]$userInputMachineName
     )
-    # 1 if update is not enabled
-    $updateStatus = Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" | Select-Object -ExpandProperty NoAutoUpdate
+    # I thought it needed to be the computer name, however for some reason it needs to be empty to return. This works, as if you run the script on your
+    # laptop, you will return a 'True' in the ServiceEnabled field
+    $cn = $null
+    [System.Reflection.Assembly]::LoadWithPartialName('Microsoft.Update.AutoUpdate') | Out-Null
+    $WindowsUpdateSettings = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.AutoUpdate",$cn))
 
-    if($updateStatus -eq 1){
-        return "PASSED"
-    }else{
+    if($WindowsUpdateSettings.ServiceEnabled){
         return "FAILED"
+    }else{
+        return "PASSED"
     }
 
 }
 
 
+function Get-VFCOverlay{
+    param(
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName
+    )
+    $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
+
+    if($modelConfig.usesVFCCards){
+        $testStatus = "FAILED"
+        Get-PnpDevice | Where-Object {$_.FriendlyName -match "VFC"} | ForEach-Object{ $testStatus = "PASSED" }
+    }else{
+        $testStatus = "WON'T TEST"
+    }
+
+    return $testStatus
+}
+
+function Test-WindowsFirewallDisabled{
+    param(
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName
+    )
+
+    $FirewallSettings = Get-NetFirewallProfile
+    $WrongFirewallProfiles = @()
+    foreach($FirewallProfile in $FirewallSettings){
+        if($FirewallProfile.Enabled){
+            $WrongFirewallProfiles += $FirewallProfile.Name
+        }
+    }
+
+    if($WrongFirewallProfiles){
+        return "Firewall Profiles Configured Incorrectly: $($WrongFirewallProfiles)"
+    }else{
+        return "PASSED"
+    }
+
+}
 
 
 function Get-PrintScreenandRetryIfFailed{

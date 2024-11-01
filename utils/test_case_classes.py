@@ -43,8 +43,14 @@ class TestCase:
                 self.set_testStatusCode(4)
             case "FAILED":
                 self.set_testStatusCode(5)
-            case _:
+            case "DONE":
                 self.set_testStatusCode(6)
+            case "WON'T TEST":
+                self.set_testStatusCode(7)
+            case "REQUIRE MORE INFO":
+                self.set_testStatusCode(8)
+            case _:
+                self.set_testStatusCode(9)
 
     
     # Getter and Setter methods
