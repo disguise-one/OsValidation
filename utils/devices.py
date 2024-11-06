@@ -2,7 +2,7 @@ import os
 import subprocess
 import pyaudio
 import wmi
-from utils.logger import logging
+from logger import logging
 import yaml
 import psutil
 import ctypes

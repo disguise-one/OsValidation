@@ -117,24 +117,33 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
     if(runRequrestResponse != -1):
         
         # Run the windows validation functions for startup and windows sections
-        windows_validation_functions = [
-            windows_settings.check_taskbar_icons,
-            windows_settings.check_start_menu_tiles,
-            windows_settings.check_app_menu_contents,
-            windows_settings.check_windows_licensing,
-            windows_settings.check_chrome_history,
-            windows_settings.check_chrome_homepage,
-            windows_settings.check_chrome_bookmarks,
-            windows_settings.check_machine_name,
-            windows_settings.check_notifications_disabled,
-            windows_settings.check_VFC_overlay,
-            windows_settings.check_windows_update_disabled,
-            windows_settings.check_firewall_disabled
+        # windows_validation_functions = [
+        #     windows_settings.check_taskbar_icons,
+        #     windows_settings.check_start_menu_tiles,
+        #     windows_settings.check_app_menu_contents,
+        #     windows_settings.check_windows_licensing,
+        #     windows_settings.check_chrome_history,
+        #     windows_settings.check_chrome_homepage,
+        #     windows_settings.check_chrome_bookmarks,
+        #     windows_settings.check_machine_name,
+        #     windows_settings.check_notifications_disabled,
+        #     windows_settings.check_VFC_overlay,
+        #     windows_settings.check_windows_update_disabled,
+        #     windows_settings.check_firewall_disabled
+        # ]
+        # windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion, ServerName)
+
+        devices_validation_functions = [
+            device_testing.check_taskbar_icons
         ]
-        windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion, ServerName)
+        deviceTests = run_validation_group(devices_validation_functions, "Devices", OSVersion, ServerName)
+
+
+        # Combine all the test run objects
+        # overallTests = np.concatenate(windowsTests, deviceTests)
 
         # Once all tests are called we loop through and send to the API request
-        for testcase in windowsTests:                          #str(runRequrestResponse['id'])
+        for testcase in deviceTests:                          #str(runRequrestResponse['id'])
             # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
             while True:
                 result = None

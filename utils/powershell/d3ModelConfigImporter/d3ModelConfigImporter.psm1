@@ -1,4 +1,5 @@
 # This module is made to aid with importing disguisePower model configs into python
+# Additionally there will be a function to import any module from sec or power, given a switch
 
 #We will use this function to achieve this. The function will take in the path to 
 function Import-ModelConfig{
