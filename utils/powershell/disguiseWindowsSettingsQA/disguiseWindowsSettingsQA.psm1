@@ -61,14 +61,25 @@ function Get-AndTestWindowsStartMenuContents{
         [Parameter(Mandatory=$true)]
         [String]$userInputMachineName
     )
+    # It depends on if the machien is windows 10 or 11, on windows 10 it will be an xml. On windows 11 its a JSON file
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
+    # Check it doesnt exist
     $LayoutPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\temp"
     if(-not (Test-Path $LayoutPath)){
+        # Strip off the name of the directory being made
+        $LayoutPath = $LayoutPath.Substring(0,$LayoutPath.LastIndexOf("\temp"))
+        # Make the directory
         New-Item -path $LayoutPath -Name "temp" -ItemType "directory" | Out-Null
     }
 
     # If the XML exists we want to delete it and overwrite it
-    $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.xml"
+    $winodwsVersion = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").ProductName
+    if($winodwsVersion -match "11"){
+        $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.json"
+    }elseif($winodwsVersion -match "10"){
+        $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.xml"
+    }
+    
     if(Test-Path -path $LayoutPath){
         Remove-item -path $LayoutPath -Force | Out-Null
     }
@@ -86,7 +97,12 @@ function Get-AndTestWindowsStartMenuContents{
     $LayoutContent = Get-Content -Path $LayoutPath
     # Oh wait, the format of the MICROSOFT provided XML is incompatable with the MICROSOFT powershell's XML parser. Nice!
     # So we're going to have to just parse the text using a regex
-    $StartMenuApps = [regex]::Matches($LayoutContent, "\\\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
+    if($winodwsVersion -match "11"){
+        $StartMenuApps = [regex]::Matches($LayoutContent, "\\\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
+    }elseif($winodwsVersion -match "10"){
+        $StartMenuApps = [regex]::Matches($LayoutContent, "\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
+    }
+    
 
     # Check if default apps are in there
     # Get the contents of the config file
@@ -96,7 +112,7 @@ function Get-AndTestWindowsStartMenuContents{
     $missingApps = @()
 
     foreach($TestApp in $defaultStartMenuApps){
-        if($StartMenuApps -notcontains $TestApp){
+        if(-not ($StartMenuApps -match $TestApp)){
             $missingApps += $TestApp
         }
     }

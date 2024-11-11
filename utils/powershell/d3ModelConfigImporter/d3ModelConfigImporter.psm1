@@ -10,7 +10,8 @@ function Import-ModelConfig{
     )
 
     # We modify the path as it is being executed inside the d3ModelCOnfigImporter file
-    $modifiedPath = Join-Path -Path "..\..\..\" -ChildPath $PathToConfigFileFromOSValidationRoot
+    # $modifiedPath = Join-Path -Path "..\..\..\" -ChildPath $PathToConfigFileFromOSValidationRoot
+    $modifiedPath = $PathToConfigFileFromOSValidationRoot
 
     #Import all the config files, via already established methods -> see disguisePower config for info on this
     try{

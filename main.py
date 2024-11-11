@@ -1,6 +1,5 @@
 # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
 from utils.auto_import import import_or_install
-firstTimeRun = True    # <- set this to true to check
 if(firstTimeRun == True):
     import_or_install("requirements.txt")
     print("Starting OS QA checking:")
@@ -80,8 +79,6 @@ def main():
         useful_utilities.printError("Cannot access UserCredentials.local.json. This is necessary for the script to continue. Exiting.")
         input("Press Enter to continue...")
         exit()
-
-    ModelConfig = useful_utilities.ImportModelConfig()
 
     # ===================== Interacting with Testrail API ===================== #
 
