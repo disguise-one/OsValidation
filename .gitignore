@@ -10,3 +10,4 @@
 /config/config_backup.yaml
 config/UserCredentials.local.json
 temp/StartMenuLayout.xml
+utils/__pycache__/*

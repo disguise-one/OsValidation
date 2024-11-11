@@ -134,7 +134,10 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
         # windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion, ServerName)
 
         devices_validation_functions = [
-            device_testing.check_taskbar_icons
+            # device_testing.check_graphics_card_control_pannel,
+            device_testing.check_matrox_capture_cards,
+            device_testing.check_deltacast_capture_cards,
+            device_testing.check_bluefish_capture_cards
         ]
         deviceTests = run_validation_group(devices_validation_functions, "Devices", OSVersion, ServerName)
 
@@ -143,10 +146,14 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
         # overallTests = np.concatenate(windowsTests, deviceTests)
 
         # Once all tests are called we loop through and send to the API request
+
+        print("\033[1mEnd of testing. Starting TestRail API calls to upload results. Please do not interrupt.\033[0m")
+
         for testcase in deviceTests:                          #str(runRequrestResponse['id'])
             # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
             while True:
                 result = None
+                print(testcase.formatSendingResultsMessage())
                 try:
                     result = client.send_post('add_result_for_case/' + str(urllib.parse.quote_plus(str(runRequrestResponse['id']))) + '/' + str(urllib.parse.quote_plus(str(testcase.get_testCode()))), {
                         'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
@@ -164,7 +171,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
                     if(userInput == 1):
                         break
                     
-            print(testcase.get_testName() + ": " + testcase.get_testResult() + ": " +  str(testcase.get_testStatusCode()))
+            
 
     
         print("DONE")

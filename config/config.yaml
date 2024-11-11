@@ -101,3 +101,14 @@ windows_settings:
     - "d3manager"
     - "Media Player Classic"
     - "Recycle Bin"
+
+devices_settings:
+  deltacast_apps:
+    - "C:\\Program Files\\Deltacast\\dCARE\\bin\\dCARE"
+    - "C:\\Program Files\\Deltacast\\dSCOPE\\bin\\dSCOPE"
+  
+  matrox_apps:
+    - "mveXinfo"
+
+  bluefish_apps:
+    - "blueinfo"

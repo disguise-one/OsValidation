@@ -1,4 +1,6 @@
 # This is a testCase class we can use to create objects as currently the system just output's a string
+import datetime
+import time
 
 class TestCase:
     testCode = ""   # <- The test case ID
@@ -15,12 +17,20 @@ class TestCase:
         self.testResultBool = True if (testResult == "PASSED") else False
         self.testResultMessage = ""
         self.testStatus = 3
+        self.printFormattedResults()
 
     
     # Specific methods
     # This method returns the formatted string
     def formatOutputString(self):
-        return "| " + self.testCode + " | " + self.testName + ": " + self.testResult
+        ts = time.time()
+        ct = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        return ct + " | " + self.testCode + " | " + self.testName + ": " + self.testResult
+    
+    def formatSendingResultsMessage(self):
+        ts = time.time()
+        ct = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        return ct + " | Sending API Call | " + self.testCode + " | " + self.testName + " | " + self.testResult + " | " + str(self.testStatus)
     
     # This method then prints the formatted string
     def printFormattedResults(self):
@@ -29,7 +39,7 @@ class TestCase:
     # Updates the result bool
     def updateResultBool(self):
         self.testResultBool = True if (self.testResult == "PASSED") else False
-        
+
 
     def updateStatusCode(self):
         match self.get_testResult():

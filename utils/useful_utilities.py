@@ -10,7 +10,13 @@ def printError(output):
     errorMsg = RED + output + RESET
     print(errorMsg)
 
-def ImportOSValidationConfig(OSValidationConfigPath="config/OSValidationConfig.json"):
+def printWarning(output):
+    RED = '\033[93m'
+    RESET = '\033[0m' # called to return to standard terminal text color
+    warningMsg = RED + output + RESET
+    print(warningMsg)
+
+def ImportOSValidationConfig(OSValidationConfigPath="./config/OSValidationConfig.json"):
     OSValidationConfigRaw = None
     OSValidationConfigJson = None
     # get working directory
