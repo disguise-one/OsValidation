@@ -15,6 +15,15 @@ Import-Module $d3OSQAUtilsPath -Force
 
 $computerName = $env:computername -replace "-.*"
 
+
+<#
+.Description
+This is a testing function that will get the windows taskbar contents
+Gathers it via a file location ($env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar) and tests against the allowed taskbar contents in
+config yaml
+It tests if they appear there and returns any missing apps
+
+#>
 function Get-AndTestWindowsTaskbarContents{
     param(        
         [Parameter(Mandatory=$true)]
@@ -53,6 +62,13 @@ function Get-AndTestWindowsTaskbarContents{
     }
 }
 
+<#
+.Description
+This tests the windows start menu contents
+It gathers the XML (or JSON if it is on windows 10), and then parses the apps out of the layout using a regex
+It then checks if the apps are contained in the approved apps list in the config.yaml file. 
+These are the default apps though, so model specific checks need to take place
+#>
 
 function Get-AndTestWindowsStartMenuContents{
     param(        
@@ -130,6 +146,13 @@ function Get-AndTestWindowsStartMenuContents{
 
 }
 
+
+<#
+.Description
+This is a testing function that will test the windows installed apps (paint, remote desktop connect etc...). It gathers the list stored in the config.yaml
+and then tries to open each one. If it cannot it returns the name of that one.
+
+#>
 function Get-AndTestWindowsAppMenuContents{
     param(        
         [Parameter(Mandatory=$true)]
@@ -177,6 +200,12 @@ function Get-AndTestWindowsAppMenuContents{
     }
 }
 
+<#
+.Description
+This gathers the evidence of the startmenu so it can be uploaded. It sends a windows button keypress, and then takes a screenshot of it. It saves it as a .bmp file
+
+#>
+
 function Get-StartMenuEvidence{
     param(        
         [Parameter(Mandatory=$true)]
@@ -202,6 +231,12 @@ function Get-StartMenuEvidence{
 
     $wShell.SendKeys("{ESC}")
 }
+
+<#
+.Description
+A function to gather if windows is licensed on this machine. There are many ways of doing this but we use slmgr /dli and check programatically via a Cim-Instance
+
+#>
 
 function Get-WindowsLicensingAndEvidence{
     param(        
@@ -255,6 +290,14 @@ function Get-WindowsLicensingAndEvidence{
 
 }
 
+<#
+.Description
+This function checks that chrome history is clear using Get-Chromehistory, and if it isnt clear, returns false. It also opens chrome and takes a screenshot of the history to ensure 
+it is clear
+
+#>
+
+
 function Test-ChromeHistory{
     param(
         [Parameter(Mandatory=$true)]
@@ -295,6 +338,13 @@ function Test-ChromeHistory{
 
 }
 
+<#
+.Description
+This is a function that gathers chrome browsing history by going to the history file, and using a regex to locate all urls that are stored
+it returns the complete url history
+
+#>
+
 function Get-ChromeHistory {
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\History"
     if (-not (Test-Path -Path $Path)) {
@@ -315,6 +365,13 @@ function Get-ChromeHistory {
     } 
 }
 
+
+<#
+.Description
+This function gathers the chrome bookmarks via the chrome app data, and converts it from JSON. 
+It gathers the required bookmarks from the config.yaml, and checks if the actual bookmarks are in it, or if there are too many bookmarks
+Then parses the 
+#>
 function Test-ChromeBookmarks{
     param(
         [Parameter(Mandatory=$true)]
@@ -364,6 +421,11 @@ function Test-ChromeBookmarks{
     }
 }
 
+<#
+.Description
+Test-ChromeHomepage gahers the homepage from the chrome secure preferences file inside app data, and checks if it is the homepage 
+listed in the config.yaml
+#>
 function Test-ChromeHomepage {
     param(
         [Parameter(Mandatory=$true)]
@@ -409,6 +471,11 @@ function Test-CtlAltDelBackgroundColor{
 
 }
 
+<#
+.Description
+Test-MachineName gets passed the machine it should be, and checks if it is the same as when running HOSTNAME.EXE
+#>
+
 function Test-MachineName{
     param(
         [Parameter(Mandatory=$true)]
@@ -416,7 +483,8 @@ function Test-MachineName{
         [Parameter(Mandatory=$true)]
         [String]$userInputMachineName
     )
-    # Need to browse to disguisePower to get the CM serial no functions in CMINFO
+    # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
+    # rather than using a hardcoded logic here \/
     $disguisedPowerPath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\..\disguisedpower\CodeMeter'
     try {
         Import-Module $disguisedPowerPath -Force
@@ -455,7 +523,11 @@ function Test-MachineName{
 
 }
 
-
+<#
+.Description
+Test-WindowsUpdateEnabled uses a load with partial name, to gather the windows update settings. If it returns an empty field in ServiceEnabled
+it is disabled
+#>
 function Test-WindowsUpdateEnabled{
     param(
         [Parameter(Mandatory=$true)]
@@ -477,7 +549,10 @@ function Test-WindowsUpdateEnabled{
 
 }
 
-
+<#
+.Description
+Get-VFCOverlay checks if there is a VFC card in the device manager. It only checks if the machine's model config uses VFC cards
+#>
 function Get-VFCOverlay{
     param(
         [Parameter(Mandatory=$true)]
@@ -497,6 +572,12 @@ function Get-VFCOverlay{
     return $testStatus
 }
 
+
+<#
+.Description
+Test-WindowsFirewallDisabled uses an inbuilt powershell function to gather the network firewall profile.  It checks if it is disabled
+and if it is enabled it passes back which one is configured incorrectly
+#>
 function Test-WindowsFirewallDisabled{
     param(
         [Parameter(Mandatory=$true)]

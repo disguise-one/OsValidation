@@ -127,6 +127,22 @@ Function Test-CaptureCard{
     return $returnString
 }
 
+function Read-PublicVersionTable{
+    param(        
+        [Parameter(Mandatory=$false)]
+        [String]$PathToPublicVersionTable = "..\..\..\config\PublicVersionTable.ps1"
+    )
+    if(-not (Test-Path $PathToPublicVersionTable)){
+        [void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); 
+        $PathToPublicVersionTable = [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the path to the Version Table OS Validation Config generated via OSBuilder (OS Build -> Select OS Build -> Public Version Table -> Export OS Validation Config. Then copy and paste into a text file and save):', 'Path to Exported OS Validation Config')
+    }
+    
+    $contents = . $PathToPublicVersionTable
+    return $contents
+}
+
+
+
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.
