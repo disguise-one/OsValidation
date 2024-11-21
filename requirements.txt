@@ -22,3 +22,4 @@ pywintypes
 pyyaml
 opencv-python
 testrail
+PySimpleGUI

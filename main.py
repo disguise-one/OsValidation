@@ -1,16 +1,18 @@
 # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
 from utils.auto_import import import_or_install
+firstTimeRun = False
 if(firstTimeRun == True):
     import_or_install("requirements.txt")
     print("Starting OS QA checking:")
 
 
-from utils import file_handling, windows_settings, d3_interaction, useful_utilities
+from utils import windows_settings, useful_utilities
 from utils.logger import logging
 from utils import testrail
 import subprocess
 import sys, select
 import json
+import re
 
 
 def gather_user_idenitifaction_of_run():
@@ -73,12 +75,23 @@ def main():
         exit()
 
     # --- Now we use the config to find the local config ---
-    UserCredentialsJson = useful_utilities.ImportOSValidationSecureConfig(OSValidationConfigJson)
+
     
+    UserCredentialsJson = useful_utilities.ImportOSValidationSecureConfig(OSValidationConfigJson)
+
     if(UserCredentialsJson == None):
         useful_utilities.printError("Cannot access UserCredentials.local.json. This is necessary for the script to continue. Exiting.")
         input("Press Enter to continue...")
         exit()
+
+    # Show and get the user selection menu
+    userChoice = useful_utilities.userSelectionConsole(UserCredentialsJson)
+    
+    # we create the userconfig
+    if(userChoice == 1):
+        useful_utilities.createTestrailUserConfig()
+    else:
+        userChoice = userChoice - 2 #0 indexing
 
     # ===================== Interacting with Testrail API ===================== #
 
@@ -90,8 +103,8 @@ def main():
     # Eg send_get('get_runs/2&suite_id=6279') says get the runs of project 2 with suite id of 6279
     # Need to do something with this \/ Make it securer
     client = testrail.APIClient(str(OSValidationConfigJson['testRailAPI']))
-    client.user = str(UserCredentialsJson['testRailUsername'])
-    client.password = str(UserCredentialsJson['testRailPassword'])
+    client.user = str(UserCredentialsJson[userChoice]['testRailUsername'])
+    client.password = str(UserCredentialsJson[userChoice]['testRailPassword'])
 
     projectNumber = OSValidationConfigJson["projectNumber"]
     suite_id = OSValidationConfigJson["suite_id"]
