@@ -22,4 +22,6 @@ pywintypes
 pyyaml
 opencv-python
 testrail
-PySimpleGUI
+re
+base64
+urllib

@@ -29,3 +29,5 @@ def import_or_install(path):
                 print("---")
                 print("====================================================")
     print("Finished package checking.")
+
+import_or_install("requirements.txt")

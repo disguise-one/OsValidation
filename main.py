@@ -1,19 +1,3 @@
-# Check that the requiements are installed - Only run this on first run to ensure all modules are installed
-from utils.auto_import import import_or_install
-firstTimeRun = False
-if(firstTimeRun == True):
-    import_or_install("requirements.txt")
-    print("Starting OS QA checking:")
-
-
-from utils import windows_settings, useful_utilities
-from utils.logger import logging
-from utils import testrail
-import subprocess
-import sys, select
-import json
-import re
-
 
 def gather_user_idenitifaction_of_run():
     ServerName = subprocess.check_output(['powershell', "[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); return [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the Server you are testing as it appears on the config file name (or for multi-machine config files, CodeMeterProductCodes -> d3Model):', 'Auto OS QA')"]).strip().decode('utf-8')
@@ -47,7 +31,7 @@ def run_validation_group(validation_functions, group_name, OSVersion, MachineNam
         
 
 
-def main():
+def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
     """
     Main function to orchestrate various validation checks.
 
@@ -60,12 +44,11 @@ def main():
     
     # ===================== Config file creation ===================== #
     #   SECTION OPERATIONS:
-    # In this section we go through all the config files, ensuring they are there, and reading them in
-    # If the user hasnt set up their local login config file it tries to make one for them,
-    # if this doesnt work it prompts them to make one
+    # In this section we go through the config file, ensuring it is there, and reading it
 
-
-    # Pull the JSON files. If you havent set up a UserCredentials.local.JSON file it will create one for you, and prompt you for the information
+    print(" ==== Starting main() function ==== ")
+    print("Loading OS Validation Config...")
+    # Pull the JSON file.
     OSValidationConfigJson = useful_utilities.ImportOSValidationConfig()
 
     # sanity checks to ensure above has worked
@@ -74,24 +57,7 @@ def main():
         input("Press Enter to continue...")
         exit()
 
-    # --- Now we use the config to find the local config ---
-
-    
-    UserCredentialsJson = useful_utilities.ImportOSValidationSecureConfig(OSValidationConfigJson)
-
-    if(UserCredentialsJson == None):
-        useful_utilities.printError("Cannot access UserCredentials.local.json. This is necessary for the script to continue. Exiting.")
-        input("Press Enter to continue...")
-        exit()
-
-    # Show and get the user selection menu
-    userChoice = useful_utilities.userSelectionConsole(UserCredentialsJson)
-    
-    # we create the userconfig
-    if(userChoice == 1):
-        useful_utilities.createTestrailUserConfig()
-    else:
-        userChoice = userChoice - 2 #0 indexing
+    print("Success")
 
     # ===================== Interacting with Testrail API ===================== #
 
@@ -101,55 +67,51 @@ def main():
     # The TestRail API uses python binding: https://support.testrail.com/hc/en-us/articles/7077135088660-Binding-Python#01G68HCTTNHFT1WVDXKW4BC4WP
     # Where you ab either get or post to the API, with a standard format filter to identify what you want to do
     # Eg send_get('get_runs/2&suite_id=6279') says get the runs of project 2 with suite id of 6279
-    # Need to do something with this \/ Make it securer
+    print("Setting up local TestRail API Client")
     client = testrail.APIClient(str(OSValidationConfigJson['testRailAPI']))
-    client.user = str(UserCredentialsJson[userChoice]['testRailUsername'])
-    client.password = str(UserCredentialsJson[userChoice]['testRailPassword'])
+    client.user = str(testrailUsername)
+    client.password = str(testrailPassword)
 
     projectNumber = OSValidationConfigJson["projectNumber"]
     suite_id = OSValidationConfigJson["suite_id"]
-    testRun = OSValidationConfigJson["testRun"]
-
-    # Gather the user id of runs and stuff
-    ServerName, OSVersion = gather_user_idenitifaction_of_run()       # <- description not working yet
-
-    # Check the user inputted the required data
-    if((ServerName == "") or (OSVersion == "")):
-        useful_utilities.printError("Server Name and OS Version is required. Exiting script")
-        input("Press Enter to continue...")
-        exit()
-
-    # We need to get the latest test run number, and increase it to set up the next test run -> maybe not needed?
-    allCases = client.send_get('get_cases/' + str(OSValidationConfigJson["projectNumber"]) + '&suite_id=' + str(suite_id))
-    allRuns = client.send_get('get_runs/' + str(OSValidationConfigJson["projectNumber"]) + '&suite_id=' + str(suite_id))
-    currentRunNumber = len(allRuns['runs']) + 1
-
-    # Setting up the new run, if we want it to. Otherwise we get the existing run
-    if(OSValidationConfigJson["testRun"] == None):
-        runAPIString = 'add_run/' + str(OSValidationConfigJson["projectNumber"]) + '&suite_id=' + str(suite_id) + '&name=' + ServerName + '_' + OSVersion
-    else:
-        runAPIString = 'get_run/'+ str(OSValidationConfigJson["testRun"]) + '&suite_id=' + str(suite_id) + '&project_id='+str(OSValidationConfigJson["projectNumber"])
+    print("Success")
 
     
-    runRequrestResponse = -1
-    # if(description != ''):
-    #     runAPIString += "&description=" + description
+    # Setting up the new run, if we want it to. Otherwise we get the existing run
 
+    # if(testRun == -1):
+    #     runAPIString = 'add_run/' + str(urllib.parse.quote_plus(str(OSValidationConfigJson["projectNumber"]))) + '&suite_id=' + str(urllib.parse.quote_plus(str(suite_id))) + '&name=' + str(urllib.parse.quote_plus(ServerName + '_' + OSVersion))
+    # else:
+    #     runAPIString = 'get_run/'+ str(urllib.parse.quote_plus(str(testRun))) + '&suite_id=' + str(urllib.parse.quote_plus(str(suite_id))) + '&project_id='+ str(urllib.parse.quote_plus(str(OSValidationConfigJson["projectNumber"])))
+    
+    if(testRun == -1):
+        # runAPIString = 'add_run/' + str(OSValidationConfigJson["projectNumber"]) + '&suite_id=' +str(suite_id) + '&name=' + str(ServerName) + '_' + str(OSVersion)
+        runAPIString = 'add_run/' + str(OSValidationConfigJson["projectNumber"])
+    else:
+        runAPIString = 'get_run/'+str(testRun) + '&suite_id=' + str(suite_id) + '&project_id='+ str(OSValidationConfigJson["projectNumber"])
+    
+    runRequrestResponse = -1
+
+    
 
     try:
         # Send a requrest to the API to create a test run
 
-        if(testRun == None):
+        if(testRun == -1):
+            print("Creating New TestRail test run")
             runRequrestResponse = client.send_post(runAPIString, {
-            "suite_id": OSValidationConfigJson["suite_id"],
-            "name": ServerName + "_" + OSVersion + "_TESTING_NOT_REAL_RESULTS",
+            "suite_id": str(OSValidationConfigJson["suite_id"]),
+            "name": str(ServerName + "_" + OSVersion + "_TESTING_NOT_REAL_RESULTS"),
             # "description": description,
             "include_all": True,
             })
         else:
+            print("Getting previous test run with id [" + str(testRun) + "]")
             runRequrestResponse = client.send_get(runAPIString)
     except Exception as error:
         useful_utilities.printError("An error occured when trying to communicate with TestRail API: " + str(error))
+        input("Failed getting/creating testrail API call. Exiting script. Press enter to exit...")
+        exit()
 
     # Now we check which response the API gave back
     if(runRequrestResponse != -1):
@@ -177,10 +139,11 @@ def main():
             while True:
                 result = None
                 try:
-                    result = client.send_post('add_result_for_case/' + str(runRequrestResponse['id']) + '/' + str(testcase.get_testCode()), {
+                    result = client.send_post('add_result_for_case/' + str(urllib.parse.quote_plus(str(runRequrestResponse['id']))) + '/' + str(urllib.parse.quote_plus(str(testcase.get_testCode()))), {
                         'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
                     })
-                except Exception as e: print("An error occured when communicating with TestRail API: " + str(e))
+                except Exception as e: 
+                    print("An error occured when communicating with TestRail API: " + str(e))
 
                 if(result != None):
                     break
@@ -191,8 +154,6 @@ def main():
                     # As N is option 2, it defaults to this if it times out so it retries the API request, or the user enters Y to abort, it breaks
                     if(userInput == 1):
                         break
-    
-                    
                     
             print(testcase.get_testName() + ": " + testcase.get_testResult() + ": " +  str(testcase.get_testStatusCode()))
 
@@ -201,11 +162,8 @@ def main():
 
     elif(runRequrestResponse == -1):
         useful_utilities.printError("Error Response -1: Error indicates there was an problem adding run to test rail. Script exited")
-
-
-
-
-
+        input("Exiting script. Press enter to exit...")
+        exit()
 
 
     # else:
@@ -257,8 +215,70 @@ def main():
     #     ]
     #     run_validation_group(d3_interaction_functions, "d3 Interaction")
     
-    
-
 
 if __name__ == "__main__":
-    main()
+    print("+===============================================+")
+    print("|                 OS Validation                 |")
+    print("+===============================================+")
+    print("\nImporting required modules...")
+    # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
+    from utils import windows_settings, useful_utilities
+    from utils.logger import logging
+    from utils import testrail
+    import subprocess, json, re, base64, sys, select, urllib
+    print("Success.\n")
+    NumberOfArgsExludingExeName = 5
+    needToExit = False
+
+    try:
+        print("Parsing Arguments...")
+
+        if(len(sys.argv) > NumberOfArgsExludingExeName + 1):
+            useful_utilities.printError("ERROR: Too many arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
+            input("Press enter to exit...")
+            exit()
+        elif (len(sys.argv) < NumberOfArgsExludingExeName):
+            useful_utilities.printError("ERROR: Too few arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
+            input("Press enter to exit...")
+            exit()
+
+        testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword = sys.argv[1:NumberOfArgsExludingExeName + 1]
+
+        try:
+            testRun = int(testRun)
+        except Exception as error:
+            input("Cannot convert [testRun] to int. Execption: " + str(error) + "\n\n Press enter to exit...")
+            exit()
+
+        try:
+            testrailPassword = base64.b64decode(testrailPassword).decode('ascii')
+        except Exception as error:
+            input("Cannot decode [testrailPassword]. Execption: " + str(error) + "\n\n Press enter to exit...")
+            exit()
+
+
+        if((testRun or osFamilyName or osBuildName or testrailUsername or testrailPassword) == ""):
+            useful_utilities.printError("All 5 arguments must be passed in. Exiting script")
+            input("Press Enter to continue...")
+            exit()
+        
+        print("Success.\n")
+    
+    except Exception as error:
+        useful_utilities.printError("An error occured before main() could be executed: " + str(error))
+        input("Exiting script. Press enter to exit...")
+        exit()
+
+    osFamilyName = osFamilyName.strip()
+    osBuildName = osBuildName.strip()
+    testrailUsername = testrailUsername.strip()
+    testrailPassword = testrailPassword.strip()
+
+    try:
+        main(testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword)
+    except Exception as error:
+        useful_utilities.printError("An error occured when running main(): " + str(error))
+        input("Exiting script. Press enter to exit...")
+        exit()
+    input("Press Enter to exit...")
+    exit()

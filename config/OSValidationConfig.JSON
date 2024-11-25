@@ -2,7 +2,6 @@
     "testRailAPI":"https://disguise.testrail.io/",
     "projectNumber": 2,
     "suite_id": 6279,
-    "testRun": 13119,
     "userCredentialsPath": ".\\config\\UserCredentials.local.json",
     "pathToDisguisePowerFromOSValidationRoot": "..\\disguisedpower\\disguiseConfig"
 }
