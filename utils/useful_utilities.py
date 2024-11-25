@@ -147,5 +147,43 @@ def userSelectionConsole(UserCredentialsJson = None):
     return int(userChoice)
 
 
+
+def uploadTestBatchToTestRail(testBatch, runRequrestResponse, client):
+    import urllib
+    # Now we check which response the API gave back
+    if(runRequrestResponse != -1):
+        # Once all tests are called we loop through and send to the API request
+        for testcase in testBatch:                          #str(runRequrestResponse['id'])
+            # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
+            while True:
+                result = None
+                print(testcase.formatSendingResultsMessage())
+                try:
+                    result = client.send_post('add_result_for_case/' + str(urllib.parse.quote_plus(str(runRequrestResponse['id']))) + '/' + str(urllib.parse.quote_plus(str(testcase.get_testCode()))), {
+                        'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
+                    })
+                except Exception as e: 
+                    print("An error occured when communicating with TestRail API: " + str(e))
+
+                if(result != None):
+                    break
+                else:
+                    # Python doenst have any easy inbuilt way to have a user input with time out - Using a batch command instead
+                    userInput = None
+                    userInput = subprocess.call('CHOICE /T 10 /C YN /D N /M "Testrail API returned a non [200] return code, indicating an error communicating with the API. Abort retry? Waiting 5 seconds for user input..."', shell=True)
+                    # As N is option 2, it defaults to this if it times out so it retries the API request, or the user enters Y to abort, it breaks
+                    if(userInput == 1):
+                        break
+    
+        print("DONE")
+
+    elif(runRequrestResponse == -1):
+        printError("Error Response -1: Error indicates there was an problem adding run to test rail. Script exited")
+        input("Exiting script. Press enter to exit...")
+        # TO DO: Output results as a text file so the testing is not lost!!
+        exit()
+
+
+
         
 

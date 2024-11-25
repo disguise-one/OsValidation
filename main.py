@@ -6,7 +6,7 @@ def gather_user_idenitifaction_of_run():
     return ServerName, OSVersion #, description
 
 
-def run_validation_group(validation_functions, group_name, OSVersion, MachineName):
+def run_validation_group(validation_functions, group_name, OSValidationDict):
     """
     Executes a group of validation functions and handles common exceptions.
 
@@ -21,7 +21,7 @@ def run_validation_group(validation_functions, group_name, OSVersion, MachineNam
     try:
         logging.info(f"--- Running Test Group {group_name} ---")
         for function in validation_functions:
-            TestRunArray.append(function(OSVersion, MachineName))
+            TestRunArray.append(function(OSValidationDict))
         return TestRunArray
     except KeyboardInterrupt:
         logging.info("Keyboard Interrupt received, exiting the program.")
@@ -31,7 +31,7 @@ def run_validation_group(validation_functions, group_name, OSVersion, MachineNam
         
 
 
-def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
+def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSValidationTemplatePath):
     """
     Main function to orchestrate various validation checks.
 
@@ -58,6 +58,13 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
         exit()
 
     print("Success")
+
+    print("Creating Parameter Dictionary")
+    OSValidationDict = {
+        "OSVersion": OSVersion,
+        "ServerName": ServerName,
+        "OSValidationTemplatePath" : OSValidationTemplatePath
+    }
 
     # ===================== Interacting with Testrail API ===================== #
 
@@ -113,73 +120,46 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword):
         input("Failed getting/creating testrail API call. Exiting script. Press enter to exit...")
         exit()
 
-    # Now we check which response the API gave back
-    if(runRequrestResponse != -1):
-        
-        # Run the windows validation functions for startup and windows sections
-        # windows_validation_functions = [
-        #     windows_settings.check_taskbar_icons,
-        #     windows_settings.check_start_menu_tiles,
-        #     windows_settings.check_app_menu_contents,
-        #     windows_settings.check_windows_licensing,
-        #     windows_settings.check_chrome_history,
-        #     windows_settings.check_chrome_homepage,
-        #     windows_settings.check_chrome_bookmarks,
-        #     windows_settings.check_machine_name,
-        #     windows_settings.check_notifications_disabled,
-        #     windows_settings.check_VFC_overlay,
-        #     windows_settings.check_windows_update_disabled,
-        #     windows_settings.check_firewall_disabled
-        # ]
-        # windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion, ServerName)
+    # Run the windows validation functions for startup and windows sections
+    windows_validation_functions = [
+        windows_settings.check_taskbar_icons,
+        windows_settings.check_start_menu_tiles,
+        windows_settings.check_app_menu_contents,
+        windows_settings.check_windows_licensing,
+        windows_settings.check_chrome_history,
+        windows_settings.check_chrome_homepage,
+        windows_settings.check_chrome_bookmarks,
+        windows_settings.check_machine_name,
+        windows_settings.check_notifications_disabled,
+        windows_settings.check_VFC_overlay,
+        windows_settings.check_windows_update_disabled,
+        windows_settings.check_firewall_disabled
+    ]
+    windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict)
 
-        devices_validation_functions = [
-            # device_testing.check_graphics_card_control_pannel,
-            device_testing.check_matrox_capture_cards,
-            device_testing.check_deltacast_capture_cards,
-            device_testing.check_bluefish_capture_cards
-        ]
-        deviceTests = run_validation_group(devices_validation_functions, "Devices", OSVersion, ServerName)
+    # Upload the batch to testrail
+    print("\033[1mEnd of Windows Tests. Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
+    useful_utilities.uploadTestBatchToTestRail(windowsTests, runRequrestResponse, client)
+    print("Success!")
+    print("=====================================================================================")
+
+    devices_validation_functions = [
+        device_testing.check_graphics_card_control_pannel,
+        device_testing.check_matrox_capture_cards,
+        device_testing.check_deltacast_capture_cards,
+        device_testing.check_bluefish_capture_cards
+    ]
+    deviceTests = run_validation_group(devices_validation_functions, "Devices", OSValidationDict)
+
+    # Upload the batch to testrail
+    print("\033[1mEnd of Device Tests. Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
+    useful_utilities.uploadTestBatchToTestRail(deviceTests, runRequrestResponse, client)
+    print("Success!")
+    print("=====================================================================================")
 
 
-        # Combine all the test run objects
-        # overallTests = np.concatenate(windowsTests, deviceTests)
-
-        # Once all tests are called we loop through and send to the API request
-
-        print("\033[1mEnd of testing. Starting TestRail API calls to upload results. Please do not interrupt.\033[0m")
-
-        for testcase in deviceTests:                          #str(runRequrestResponse['id'])
-            # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
-            while True:
-                result = None
-                print(testcase.formatSendingResultsMessage())
-                try:
-                    result = client.send_post('add_result_for_case/' + str(urllib.parse.quote_plus(str(runRequrestResponse['id']))) + '/' + str(urllib.parse.quote_plus(str(testcase.get_testCode()))), {
-                        'status_id': str(testcase.get_testStatusCode()), 'comment': testcase.get_testResultMessage()
-                    })
-                except Exception as e: 
-                    print("An error occured when communicating with TestRail API: " + str(e))
-
-                if(result != None):
-                    break
-                else:
-                    # Python doenst have any easy inbuilt way to have a user input with time out - Using a batch command instead
-                    userInput = None
-                    userInput = subprocess.call('CHOICE /T 10 /C YN /D N /M "Testrail API returned a non [200] return code, indicating an error communicating with the API. Abort retry? Waiting 5 seconds for user input..."', shell=True)
-                    # As N is option 2, it defaults to this if it times out so it retries the API request, or the user enters Y to abort, it breaks
-                    if(userInput == 1):
-                        break
-                    
-            
 
     
-        print("DONE")
-
-    elif(runRequrestResponse == -1):
-        useful_utilities.printError("Error Response -1: Error indicates there was an problem adding run to test rail. Script exited")
-        input("Exiting script. Press enter to exit...")
-        exit()
 
 
     # else:
@@ -238,12 +218,13 @@ if __name__ == "__main__":
     print("+===============================================+")
     print("\nImporting required modules...")
     # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
-    from utils import windows_settings, useful_utilities
+    from utils import windows_settings, useful_utilities, device_testing
     from utils.logger import logging
     from utils import testrail
     import subprocess, json, re, base64, sys, select, urllib
+    import numpy as np
     print("Success.\n")
-    NumberOfArgsExludingExeName = 5
+    NumberOfArgsExludingExeName = 6
     needToExit = False
 
     try:
@@ -258,7 +239,7 @@ if __name__ == "__main__":
             input("Press enter to exit...")
             exit()
 
-        testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword = sys.argv[1:NumberOfArgsExludingExeName + 1]
+        testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath = sys.argv[1:NumberOfArgsExludingExeName + 1]
 
         try:
             testRun = int(testRun)
@@ -291,7 +272,7 @@ if __name__ == "__main__":
     testrailPassword = testrailPassword.strip()
 
     try:
-        main(testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword)
+        main(testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath)
     except Exception as error:
         useful_utilities.printError("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")

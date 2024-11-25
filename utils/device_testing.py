@@ -1,10 +1,10 @@
 import subprocess
 from utils.test_case_classes import TestCase
 
-def check_graphics_card_control_pannel(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-GraphicsCardControlPannel -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+def check_graphics_card_control_pannel(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-GraphicsCardControlPannel -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
-    GPUControlPannelTestCase = TestCase("374748", "Graphics Card Control Panel", "UNTESTED")
+    GPUControlPannelTestCase = TestCase("374743", "Graphics Card Control Panel", "UNTESTED")
     try:
         GPUControlPannel = subprocess.check_output(['powershell', powershellComand]).strip().decode('utf-8')
     except:
@@ -15,8 +15,8 @@ def check_graphics_card_control_pannel(OSVersion, ComputerName):
     return GPUControlPannelTestCase
 
 
-def check_matrox_capture_cards(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName + "-CaptureCardManufacturer 'MATROX'"
+def check_matrox_capture_cards(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"] + "-CaptureCardManufacturer 'MATROX'" + " -pathToOSValidationTemplate " + OSValidationDict["OSValidationTemplatePath"]
 
     MatroxTestCase = TestCase("374748", "MATROX ONLY: Driver Check", "UNTESTED")
     try:
@@ -39,8 +39,8 @@ def check_matrox_capture_cards(OSVersion, ComputerName):
     MatroxTestCase.printFormattedResults()
     return MatroxTestCase
 
-def check_deltacast_capture_cards(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName + "-CaptureCardManufacturer 'deltacast'"
+def check_deltacast_capture_cards(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"] + "-CaptureCardManufacturer 'deltacast'" + " -pathToOSValidationTemplate " + OSValidationDict["OSValidationTemplatePath"]
 
     deltacastTestCase = TestCase("588212", "DELTACAST ONLY: Driver Check", "UNTESTED")
     try:
@@ -63,8 +63,8 @@ def check_deltacast_capture_cards(OSVersion, ComputerName):
     deltacastTestCase.printFormattedResults()
     return deltacastTestCase
 
-def check_bluefish_capture_cards(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName + "-CaptureCardManufacturer 'bluefish'"
+def check_bluefish_capture_cards(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-CaptureCard -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"] + "-CaptureCardManufacturer 'bluefish'" + " -pathToOSValidationTemplate " + OSValidationDict["OSValidationTemplatePath"]
 
     bluefishTestCase = TestCase("374746", "BLUEFISH ONLY: Driver Check", "UNTESTED")
     print("\033[93mWARNING: This function has not been tested, so please report any unexpected behaviour\033[0m")

@@ -34,6 +34,17 @@ function Import-ModelConfig{
     }
 }
 
+function Import-OSValidationTemplate{
+    param(
+        [Parameter(Mandatory=$false)]
+        [String]$PathToTemplateFile = "C:\Windows\Temp\OSValidationTemplate.ps1"
+    )
+
+    $object = . $PathToTemplateFile
+    return $object
+
+}
+
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.

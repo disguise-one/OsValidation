@@ -43,7 +43,7 @@ function Test-GraphicsCardControlPannel{
     }
     else{
         # AMD STUFF
-        Write-Error "GPU Detected as AMD (or atleast not NVIDIA). This hasn't been implemented yet. Implement it?"
+        Write-Error "GPU Detected as AMD (or at least not NVIDIA). This functionality hasn't been implemented yet. Implement it?"
         return "UNTESTED"
     }
 }
@@ -125,20 +125,6 @@ Function Test-CaptureCard{
     # 
     
     return $returnString
-}
-
-function Read-PublicVersionTable{
-    param(        
-        [Parameter(Mandatory=$false)]
-        [String]$PathToPublicVersionTable = "..\..\..\config\PublicVersionTable.ps1"
-    )
-    if(-not (Test-Path $PathToPublicVersionTable)){
-        [void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); 
-        $PathToPublicVersionTable = [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the path to the Version Table OS Validation Config generated via OSBuilder (OS Build -> Select OS Build -> Public Version Table -> Export OS Validation Config. Then copy and paste into a text file and save):', 'Path to Exported OS Validation Config')
-    }
-    
-    $contents = . $PathToPublicVersionTable
-    return $contents
 }
 
 

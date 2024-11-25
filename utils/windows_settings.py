@@ -6,8 +6,10 @@ from utils.test_case_classes import TestCase
 # Some of these return only true or false. I need to switch them over to returning the status codes of testrail ascan be found in the test_case_classes class
 
 
-def check_taskbar_icons(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsTaskbarContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+def check_taskbar_icons(OSValidationDict):
+    OSVersion = OSValidationDict["OSVersion"]
+    ComputerName = OSValidationDict["ServerName"]
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsTaskbarContents -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     taskbarTestCase = TestCase("374768", "Taskbar Contents", "Untested")
     try:
@@ -28,10 +30,10 @@ def check_taskbar_icons(OSVersion, ComputerName):
 
 
 # To do: Make a function in POWERSHELL module that will take the model configs and identify which apps should be installed
-def check_start_menu_tiles(OSVersion, ComputerName):
+def check_start_menu_tiles(OSValidationDict):
 
     # Create the powershell command
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsStartMenuContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsStartMenuContents -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     # Execute it
     try:
@@ -54,11 +56,11 @@ def check_start_menu_tiles(OSVersion, ComputerName):
 
 
 
-def check_app_menu_contents(OSVersion, ComputerName):
+def check_app_menu_contents(OSValidationDict):
     # Approbved apps are: Paint, Snipping Tool, Steps Recorder, Notepad, Wordpad, Character Map, Remote Desktop Connection, Math input
     # Needs to find calculator
     
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsAppMenuContents -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-AndTestWindowsAppMenuContents -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     AppMenuTestCase = TestCase("374770", "App Menu Contents", "Untested")
     try:
@@ -80,9 +82,9 @@ def check_app_menu_contents(OSVersion, ComputerName):
     return AppMenuTestCase
 
 
-def check_windows_licensing(OSVersion, ComputerName):
+def check_windows_licensing(OSValidationDict):
     # Check licensing status
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-WindowsLicensingAndEvidence -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-WindowsLicensingAndEvidence -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     # Create the test suite
     licenseTestCase = TestCase("374728", "Windows License", "Untested")
@@ -98,8 +100,8 @@ def check_windows_licensing(OSVersion, ComputerName):
     
     return licenseTestCase
 
-def check_chrome_history(OSVersion, ComputerName):
-    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeHistory -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+def check_chrome_history(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeHistory -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     # Create the test suite
     chromeHistoryTestCase = TestCase("374722", "Chrome History", "Untested")
@@ -115,8 +117,8 @@ def check_chrome_history(OSVersion, ComputerName):
     
     return chromeHistoryTestCase
 
-def check_chrome_bookmarks(OSVersion, ComputerName):
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeBookmarks -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+def check_chrome_bookmarks(OSValidationDict):
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeBookmarks -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     # Create the test suite
     chromeBookmarksTestCase = TestCase("401173", "Chrome Bookmarks", "Untested")
@@ -134,8 +136,8 @@ def check_chrome_bookmarks(OSVersion, ComputerName):
     return chromeBookmarksTestCase
 
 
-def check_chrome_homepage(OSVersion, ComputerName):
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeHomepage -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+def check_chrome_homepage(OSValidationDict):
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-ChromeHomepage -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
 
     # Create the test suite
     chromeHomepageTestCase = TestCase("401174", "Chrome Homepage", "Untested")
@@ -153,7 +155,7 @@ def check_chrome_homepage(OSVersion, ComputerName):
     return chromeHomepageTestCase
 
 # This doesnt seem to correctly ID the color. In the OS e change something that overwrites the REGISTRY, not replacing the values on it, so this check doesnt check the right thing
-def check_windows_background_color(OSVersion, ComputerName):
+def check_windows_background_color(OSValidationDict):
     # Check background color
     background_color = subprocess.check_output(['powershell', 'Get-ItemProperty -Path "HKCU:\\Control Panel\\Colors" -Name "Background" | Select-Object -ExpandProperty Background']).strip().decode('utf-8')
 
@@ -164,13 +166,13 @@ def check_windows_background_color(OSVersion, ComputerName):
 
 
 # Need to find a way to verify the name is correct
-def check_machine_name(OSVersion, ComputerName):
+def check_machine_name(OSValidationDict):
 
     # Create the test class
     machineNameTestCase = TestCase("374727", "Machine Name", "UNTESTED")
 
     # Check machine name
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-MachineName -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-MachineName -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
     machine_name_return_status = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
 
     machineNameTestCase.set_testResult(machine_name_return_status)
@@ -179,7 +181,7 @@ def check_machine_name(OSVersion, ComputerName):
     return machineNameTestCase
 
 
-def check_notifications_disabled(OSVersion, ComputerName):
+def check_notifications_disabled(OSValidationDict):
 
     notificationTestCase = TestCase("374729", "Notifications Disabled", "UNTESTED")
 
@@ -198,12 +200,12 @@ def check_notifications_disabled(OSVersion, ComputerName):
     return notificationTestCase
 
 
-def check_windows_update_disabled(OSVersion, ComputerName):
+def check_windows_update_disabled(OSValidationDict):
     # Setup the test case
     windowsUpdateTestCase = TestCase("374730", "Update Disabled", "UNTESTED")
 
     # Check if windows updates are enabled
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsUpdateEnabled -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsUpdateEnabled -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
     windowsUpdateTestStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
 
     windowsUpdateTestCase.set_testResult(windowsUpdateTestStatus)
@@ -212,12 +214,12 @@ def check_windows_update_disabled(OSVersion, ComputerName):
     return windowsUpdateTestCase
 
 
-def check_VFC_overlay(OSVersion, ComputerName):
+def check_VFC_overlay(OSValidationDict):
     # Setup the test case
     VFCOverlayTestCase = TestCase("374734", "VFC Overlay", "UNTESTED")
 
     # Check if windows updates are enabled
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-VFCOverlay -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Get-VFCOverlay -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
     VFCOverlayTestStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
 
     VFCOverlayTestCase.set_testResult(VFCOverlayTestStatus)
@@ -226,12 +228,12 @@ def check_VFC_overlay(OSVersion, ComputerName):
     return VFCOverlayTestCase
 
 
-def check_firewall_disabled(OSVersion, ComputerName):
+def check_firewall_disabled(OSValidationDict):
     # Setup the test case
     firewallTestCase = TestCase("374731", "Windows Firewall Disabled", "UNTESTED")
 
     # Check if firewall is disabled
-    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsFirewallDisabled -OSVersion " + OSVersion + " -userInputMachineName " + ComputerName
+    powershellCommand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-WindowsFirewallDisabled -OSVersion " + OSValidationDict["OSVersion"] + " -userInputMachineName " + OSValidationDict["ServerName"]
     firewallStatus = subprocess.check_output(['powershell', powershellCommand]).strip().decode('utf-8')
 
     if(firewallStatus == "PASSED"):
