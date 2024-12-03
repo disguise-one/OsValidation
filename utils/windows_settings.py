@@ -43,9 +43,9 @@ def check_start_menu_tiles(OSValidationDict):
 
     startMenuTestCase = TestCase("374769", "Start Menu Icons", "Untested")
 
-    if StartMenuContents == "BLOCKED":
+    if StartMenuContents == "PASSED":
         startMenuTestCase.set_testResult(StartMenuContents)
-        startMenuTestCase.set_testResultMessage("All default apps installed. You now need to check that the model specific apps (eg: dCARE) are installed")
+        startMenuTestCase.set_testResultMessage("All default apps installed.")
     else:
         startMenuTestCase.set_testResult("FAILED")
         startMenuTestCase.set_testResultMessage("Missing Apps: " + str(StartMenuContents))

@@ -31,9 +31,12 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
 
     # Upload the batch to testrail
     print("\033[1mEnd of " + str(GroupName) + ". Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
-    useful_utilities.uploadTestBatchToTestRail(TestRunArray, runRequrestResponse, client)
-    print("Success!")
+    failedUploads = useful_utilities.uploadTestBatchToTestRail(TestRunArray, runRequrestResponse, client)
+    if(failedUploads):
+        useful_utilities.printError("There may have been some failed uploads. Please check at the end for manual uploads of test results.")
+    
     print("=====================================================================================")
+    return failedUploads
         
 
 
@@ -52,7 +55,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
     #   SECTION OPERATIONS:
     # In this section we go through the config file, ensuring it is there, and reading it
 
-    print(" ==== Starting main() function ==== ")
+    print("==============================Starting main() function=================================")
     print("Loading OS Validation Config...")
     # Pull the JSON file.
     OSValidationConfigJson = useful_utilities.ImportOSValidationConfig()
@@ -127,6 +130,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         exit()
 
     # Run the windows validation functions for startup and windows sections
+    failedUploads = []
     windows_validation_functions = [
         windows_settings.check_taskbar_icons,
         windows_settings.check_start_menu_tiles,
@@ -141,7 +145,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         windows_settings.check_windows_update_disabled,
         windows_settings.check_firewall_disabled
     ]
-    windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
+    failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
     devices_validation_functions = [
         device_testing.check_graphics_card_control_pannel,
@@ -149,10 +153,20 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         device_testing.check_deltacast_capture_cards,
         device_testing.check_bluefish_capture_cards
     ]
-    deviceTests = run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
+    failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 
+    if(failedUploads):
+        print("==================================Failed Uploads=====================================")
+        useful_utilities.printError("MANUAL UPLOAD REQUIRED...")
+        print("There seems to be some test results that failed to upload to TestRail. Please do this manually, and/or report the bug that is stopping the upload.\n\n")
+        print("Failed Uploads: ")
+        for fail in failedUploads:
+            print(fail)
+            print()
 
-
+        print("=====================================================================================")
+    print()
+    print("Finished Testing and Uploading.")
 
 
     

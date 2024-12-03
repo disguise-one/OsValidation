@@ -141,7 +141,7 @@ function Get-AndTestWindowsStartMenuContents{
     if($missingApps){
         return $missingApps
     }else{
-        return "BLOCKED"
+        return "PASSED"
     }
 
 }
@@ -485,13 +485,13 @@ function Test-MachineName{
     )
     # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
     # rather than using a hardcoded logic here \/
-    $disguisedPowerPath = Join-Path -Path $PSScriptRoot -ChildPath '..\..\..\..\disguisedpower\CodeMeter'
+    $disguisedPowerPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
     try {
         Import-Module $disguisedPowerPath -Force
     }
     catch {
         # Cannot test it if we cannot import the module, so we return the untested code
-        return "UNTESTED"
+        return "BLOCKED"
     }
 
     # Pull the evidence

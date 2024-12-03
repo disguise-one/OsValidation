@@ -153,8 +153,10 @@ def uploadTestBatchToTestRail(testBatch, runRequrestResponse, client):
     # Now we check which response the API gave back
     if(runRequrestResponse != -1):
         # Once all tests are called we loop through and send to the API request
+        failedUploads = []
         for testcase in testBatch:                          #str(runRequrestResponse['id'])
             # No 'do...while' in python. A loop that is evaluated at the end is required, so I will implement it like this
+            retries = 3
             while True:
                 result = None
                 print(testcase.formatSendingResultsMessage())
@@ -165,17 +167,23 @@ def uploadTestBatchToTestRail(testBatch, runRequrestResponse, client):
                 except Exception as e: 
                     print("An error occured when communicating with TestRail API: " + str(e))
 
+                
                 if(result != None):
                     break
                 else:
                     # Python doenst have any easy inbuilt way to have a user input with time out - Using a batch command instead
+                    output = 'CHOICE /T 10 /C Yn /D Y /M "Testrail API returned a non [200] return code, indicating an error communicating with the API. Retry? Waiting 5 seconds for user input. Retrying ' + str(retries) + ' more times..."'
                     userInput = None
-                    userInput = subprocess.call('CHOICE /T 10 /C YN /D N /M "Testrail API returned a non [200] return code, indicating an error communicating with the API. Abort retry? Waiting 5 seconds for user input..."', shell=True)
+                    userInput = subprocess.call(output, shell=True)
+                    print("userInput: " + str(userInput))
+                    retries = retries - 1
                     # As N is option 2, it defaults to this if it times out so it retries the API request, or the user enters Y to abort, it breaks
-                    if(userInput == 1):
+                    if(userInput == 2 or retries == 0):
+                        failedUploads.append(str("\n\tTest Name:\t\t" + str(testcase.get_testName()) + "\n\tResult:\t\t" + str(testcase.get_testResult()) + ". \n\tMessage:\t" + str(testcase.get_testResultMessage())))
                         break
-    
+                    
         print("DONE")
+        return failedUploads
 
     elif(runRequrestResponse == -1):
         printError("Error Response -1: Error indicates there was an problem adding run to test rail. Script exited")
