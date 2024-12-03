@@ -6,7 +6,7 @@ def gather_user_idenitifaction_of_run():
     return ServerName, OSVersion #, description
 
 
-def run_validation_group(validation_functions, group_name, OSValidationDict):
+def run_validation_group(validation_functions, group_name, OSValidationDict, runRequrestResponse, client, GroupName):
     """
     Executes a group of validation functions and handles common exceptions.
 
@@ -22,12 +22,18 @@ def run_validation_group(validation_functions, group_name, OSValidationDict):
         logging.info(f"--- Running Test Group {group_name} ---")
         for function in validation_functions:
             TestRunArray.append(function(OSValidationDict))
-        return TestRunArray
+        # return TestRunArray
     except KeyboardInterrupt:
         logging.info("Keyboard Interrupt received, exiting the program.")
         sys.exit(0)
     except Exception as e:
-        logging.exception(f"An unexpected error occurred: {e}")
+        logging.exception(f"An unexpected error occurred when running function [{str(function.__name__)}]: {e}")
+
+    # Upload the batch to testrail
+    print("\033[1mEnd of " + str(GroupName) + ". Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
+    useful_utilities.uploadTestBatchToTestRail(TestRunArray, runRequrestResponse, client)
+    print("Success!")
+    print("=====================================================================================")
         
 
 
@@ -135,13 +141,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         windows_settings.check_windows_update_disabled,
         windows_settings.check_firewall_disabled
     ]
-    windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict)
-
-    # Upload the batch to testrail
-    print("\033[1mEnd of Windows Tests. Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
-    useful_utilities.uploadTestBatchToTestRail(windowsTests, runRequrestResponse, client)
-    print("Success!")
-    print("=====================================================================================")
+    windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
     devices_validation_functions = [
         device_testing.check_graphics_card_control_pannel,
@@ -149,13 +149,9 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         device_testing.check_deltacast_capture_cards,
         device_testing.check_bluefish_capture_cards
     ]
-    deviceTests = run_validation_group(devices_validation_functions, "Devices", OSValidationDict)
+    deviceTests = run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 
-    # Upload the batch to testrail
-    print("\033[1mEnd of Device Tests. Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
-    useful_utilities.uploadTestBatchToTestRail(deviceTests, runRequrestResponse, client)
-    print("Success!")
-    print("=====================================================================================")
+
 
 
 

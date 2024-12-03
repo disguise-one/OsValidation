@@ -6,7 +6,9 @@ This Python script is designed for performing various validation checks on a Win
 For more detailed description check the wiki: https://github.com/disguise-one/OsValidation/wiki
 
 
-The OSConfig.JSON is used to allow Script based configuration: DisguisedPower location, username to interact with testrail etc...
+The OSConfig.JSON is used to allow Script based configuration: DisguisedPower parent repo location, testrail info etc...
+
+
 
 Note to developers:
 Please leave main in a status that anyone can download and run. This means ENSURING you havent uploaded your UserCredentials.local.json (it should be added to .gitignore but just check you havent staged it), setting first_run to true, and enabling all tests that are ready for use.

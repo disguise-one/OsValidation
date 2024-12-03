@@ -9,10 +9,16 @@ function Test-GraphicsCardControlPannel{
         [Parameter(Mandatory=$true)]
         [String]$OSVersion,
         [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$userInputMachineName,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
     )
+    # Importing the required modules
     $path = Format-disguiseModulePathForImport -RepoName "disguisedsec" -ModuleName "d3HardwareValidation"
-    Import-Module $path
+    Import-Module $path -Force
+    $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
+    Import-Module $path -Force
+
     $hw = Assert-Hardware
     if($hw.gpu.Manufacturer -eq "NVIDIA"){
         $process = $null
@@ -32,18 +38,34 @@ function Test-GraphicsCardControlPannel{
             Wait-Process -Name $process.Name | Out-Null
         }
 
-        $command = {Remove-Item "$Env:USERPROFILE\Desktop\NVIDIACorp.NVIDIAControlPanel_*" -Force -Recurse -WarningAction Continue}
-        Invoke-Command -ScriptBlock $command | Out-Null
-
-        if($process){
-            return "PASSED"
-        }else{
-            return "FAILED"
+        $returnMessage = ""
+        try{
+            $command = {Remove-Item "$Env:USERPROFILE\Desktop\NVIDIACorp.NVIDIAControlPanel_*" -Force -Recurse -WarningAction Continue}
+            Invoke-Command -ScriptBlock $command | Out-Null
+        }catch{
+            $returnMessage += "Note: [Desktop\NVIDIACorp.NVIDIAControlPanel] could not be removed. Please remove manually. "
         }
+
+        $nvidiaDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("NVIDIA_Driver").ToUpper()} 
+
+        $testValue = "PASSED"
+        if(-not(Compare-Versions -Version1 $hw.gpu.DriverVersion -Version2 $nvidiaDriverTemplate.publicPackageVersion -equal)){
+            $returnMessage += "Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. This is different to the required version: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)] as found in choco package [Nvidia Driver and Software]'s [publicPackageVersion]. "
+            $testValue = "FAILED"
+        }else{
+            $returnMessage += "Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. Choco package [Nvidia Driver and Software]'s [publicPackageVersion]: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)]"
+        }
+
+        if(-not $process){
+            $returnMessage += "Nvidia Control Pannel not Installed. "
+            $testValue = "FAILED"
+        }
+
+        return "$($testValue) $($returnMessage)"
     }
     else{
-        # AMD STUFF
-        Write-Error "GPU Detected as AMD (or at least not NVIDIA). This functionality hasn't been implemented yet. Implement it?"
+        # AMD STUFF - Not implemented yet.
+        # Write-Error "GPU Detected as AMD (or at least not NVIDIA). This functionality hasn't been implemented yet. Implement it?"
         return "UNTESTED"
     }
 }
@@ -69,7 +91,9 @@ Function Test-CaptureCard{
         [Parameter(Mandatory=$true)]
         [String]$userInputMachineName,
         [Parameter(Mandatory=$true)]
-        [String]$CaptureCardManufacturer
+        [String]$CaptureCardManufacturer,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
     )
     # Inital data manipulation
     $CaptureCardManufacturer = $CaptureCardManufacturer.ToUpper()
@@ -86,6 +110,9 @@ Function Test-CaptureCard{
     # Now we check in device manager
     $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "d3CaptureCards"
     Import-Module $path
+    $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
+    Import-Module $path
+
     $captureCards = Get-CaptureCards
     # Check it returned 
     if(-not $captureCards){
@@ -93,11 +120,12 @@ Function Test-CaptureCard{
     }
 
     # Pull the required app from the config yaml
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $testConfig = Import-Yaml -configYamlPath ".\config\config.yaml"
     $dotIndexExtension = "$($CaptureCardManufacturer)_apps"
     $captureApps = $testConfig.devices_settings.$dotIndexExtension  #<--
 
     $returnString = ""
+    $testValue = "PASSED"
     # loop through all the apps we need to test
     foreach($app in $captureApps){
         # Instantiate the process to ensure it is clear at the start of each loop
@@ -116,15 +144,26 @@ Function Test-CaptureCard{
             Get-PrintScreenandRetryIfFailed -PathAndFileName $path | Out-Null
             Stop-Process -Name $process.Name | Out-Null
             Wait-Process -Name $process.Name | Out-Null
-            $returnString += "$($app) - REQUIRE MORE INFO: Please manually check driver version."
+            
         }else{
             $returnString += "$($app) - FAILED: could not start app. "
+            $testValue = "FAILED"
         }
     }
 
-    # 
+    # Now we need to verify the driver version 
+    $captureDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($CaptureCardManufacturer)_Driver").ToUpper()} 
+
+    $captureCardDriverModified = $captureCards.DriverVersion -replace 'v', ' '
+
+    if(-not(Compare-Versions -Version1 $captureCardDriverModified -Version2 $captureDriverTemplate.publicPackageVersion -equal)){
+        $returnString += "Capture card [$($captureCards.Model)]'s driver version detected as: [$([Version]$captureCardDriverModified)]. This is different to the required version: [$([Version]$captureDriverTemplate.publicPackageVersion)] as found in choco package [Nvidia Driver and Software]'s [publicPackageVersion]. "
+        $testValue = "FAILED"
+    }else{
+        $returnString += "Capture card [$($captureCards.Model)]'s version detected as: [$([Version]$captureCardDriverModified)]. Choco package [$($CaptureCardManufacturer)_Driver]'s [publicPackageVersion]: [$([Version]$captureDriverTemplate.publicPackageVersion)] "
+    }
     
-    return $returnString
+    return "$($testValue) $($returnString)"
 }
 
 

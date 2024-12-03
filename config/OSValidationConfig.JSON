@@ -3,5 +3,5 @@
     "projectNumber": 2,
     "suite_id": 6279,
     "userCredentialsPath": ".\\config\\UserCredentials.local.json",
-    "pathToDisguisePowerFromOSValidationRoot": "..\\disguisedpower\\disguiseConfig"
+    "pathToDisguisePowerAndSecParentDir": "\\\\d3deploydev\\deploymentShare"
 }

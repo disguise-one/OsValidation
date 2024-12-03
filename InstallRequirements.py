@@ -1,4 +1,6 @@
 import pip
+import subprocess
+import sys
 
 def import_or_install(path):
     print("Checking required packages are installed...")
@@ -14,7 +16,8 @@ def import_or_install(path):
         except ImportError as e:
             print("Importing [" + requirement + "] failed indicating it is not installed. Attempting to install module")
             try:
-                pip.main(['install', requirement])   
+                # pip.main(['install', requirement])   
+                subprocess.check_call([sys.executable, "-m", "pip", "install", requirement])
                 print("====================================================")
             except:
                 print("Failure. Please install package: [" + requirement + "] manually using command line comand: ")

@@ -5,14 +5,14 @@
 function Import-ModelConfig{
     param(
         [Parameter(Mandatory=$false)]
-        [String]$PathToConfigFileFromOSValidationRoot = "..\disguisedpower\disguiseConfig",        
+        [String]$PathToConfigFileFromOSValidationRoot = "disguisedpower\disguiseConfig",        
         [Parameter(Mandatory=$false)]
         [Switch]$ReturnAsPowershellObject
     )
 
     # We modify the path as it is being executed inside the d3ModelCOnfigImporter file
-    # $modifiedPath = Join-Path -Path "..\..\..\" -ChildPath $PathToConfigFileFromOSValidationRoot
-    $modifiedPath = $PathToConfigFileFromOSValidationRoot
+    $modifiedPath = Join-Path -Path (Import-OSValidatonConfig).pathToDisguisePowerAndSecParentDir -ChildPath $PathToConfigFileFromOSValidationRoot
+    #$modifiedPath = $PathToConfigFileFromOSValidationRoot
 
     #Import all the config files, via already established methods -> see disguisePower config for info on this
     try{
@@ -40,8 +40,78 @@ function Import-OSValidationTemplate{
         [String]$PathToTemplateFile = "C:\Windows\Temp\OSValidationTemplate.ps1"
     )
 
+    $PathToTemplateFile = if($PathToTemplateFile -match '\\'){$PathToTemplateFile -replace '\\', '\'}
+
     $object = . $PathToTemplateFile
     return $object
+
+}
+
+function Import-OSValidatonConfig{
+    $config = Get-Content -Path ".\config\OSvalidationConfig.JSON" | ConvertFrom-Json
+    return $config
+}
+
+# This should be called from anythin INSIDE the powershell folder
+function Format-disguiseModulePathForImport{
+    param(
+        [Parameter(Mandatory=$true)]
+        [String]$RepoName,        
+        [Parameter(Mandatory=$true)]
+        [String]$ModuleName
+    )
+
+    $OSValidationConfigJsonFile = Import-OSValidatonConfig
+
+    # first create the repo path
+    $RepoPath = Join-Path -path $OSValidationConfigJsonFile.pathToDisguisePowerAndSecParentDir -ChildPath $RepoName
+    if(-not(Test-Path $RepoPath)){
+        Write-Error "The Repo [$($RepoName)] cannot be found at relative path [$($RepoPath)] please check it exists and ensure you are calling this function from inside a script located in [utils\powershell] or any of it's subdirectories"
+        return $false
+    }
+
+    # Now create the module path
+    $modulePath = Join-Path -path $RepoPath -ChildPath $ModuleName
+    if(-not(Test-Path $modulePath)){
+        Write-Error "The Module [$($ModuleName)] cannot be found at relative path [$($modulePath)] please check it exists and ensure you are calling this function from inside a script located in [utils\powershell] or any of it's subdirectories"
+        return $false
+    }
+    
+    return $modulePath
+    
+}
+
+Function Import-Yaml{
+    param(        
+        [Parameter(Mandatory=$false)]
+        [String]$configYamlPath = ".\config\config.yaml"
+    )
+
+    if (-not(test-path $configYamlPath)){
+        Write-Error "No file found in [$($configYamlPath)]. Is it supposed to be there? Make sure it is there and try again."
+        return $null
+    }
+
+    try{
+        import-module powershell-yaml -Force
+    }catch{
+        Install-Module -Name powershell-yaml -SkipPublisherCheck -Force
+        try{
+            import-module powershell-yaml -Force
+        }catch{
+            Write-Error "Install of [powershell-yaml] seems to have failed. Please run 'Install-Module -Name powershell-yaml -SkipPublisherCheck -Force' by hand and then run again"
+        }
+        
+    }
+
+    try{
+        $configYaml = Get-Content -Path $configYamlPath | ConvertFrom-Yaml
+    }catch{
+        Write-Error "Canot parse file in [$($configYamlPath)]. Is it valid Yaml?"
+        return $null
+    }
+    
+    return $configYaml
 
 }
 
