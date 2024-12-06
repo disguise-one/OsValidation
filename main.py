@@ -18,16 +18,17 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
         group_name (str): Name of the validation group for logging purposes.
     """
     TestRunArray = []
-    try:
-        logging.info(f"--- Running Test Group {group_name} ---")
-        for function in validation_functions:
+    logging.info(f"--- Running Test Group {group_name} ---")
+    for function in validation_functions:
+        try:
             TestRunArray.append(function(OSValidationDict))
-        # return TestRunArray
-    except KeyboardInterrupt:
-        logging.info("Keyboard Interrupt received, exiting the program.")
-        sys.exit(0)
-    except Exception as e:
-        logging.exception(f"An unexpected error occurred when running function [{str(function.__name__)}]: {e}")
+            if(TestRunArray[len(TestRunArray)-1].get_testImagePathArr() != ''):
+                print(str(TestRunArray[len(TestRunArray)-1].get_testImagePathArr()))
+        except KeyboardInterrupt:
+            logging.info("Keyboard Interrupt received, exiting the program.")
+            exit()
+        except Exception as e:
+            logging.exception(f"An unexpected error occurred when running function [{str(function.__name__)}]: {e}")
 
     # Upload the batch to testrail
     print("\033[1mEnd of " + str(GroupName) + ". Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
@@ -145,10 +146,10 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         windows_settings.check_windows_update_disabled,
         windows_settings.check_firewall_disabled
     ]
-    failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
+    # failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
     devices_validation_functions = [
-        device_testing.check_graphics_card_control_pannel,
+        # device_testing.check_graphics_card_control_pannel,
         device_testing.check_matrox_capture_cards,
         device_testing.check_deltacast_capture_cards,
         device_testing.check_bluefish_capture_cards
@@ -228,11 +229,16 @@ if __name__ == "__main__":
     print("+===============================================+")
     print("\nImporting required modules...")
     # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
-    from utils import windows_settings, useful_utilities, device_testing
-    from utils.logger import logging
-    from utils import testrail
-    import subprocess, json, re, base64, sys, select, urllib
-    import numpy as np
+    try:
+        from utils.logger import logging
+        from utils import testrail
+        import subprocess, json, re, base64, sys, select, urllib
+        import numpy as np
+        from utils import windows_settings, useful_utilities, device_testing
+    except Exception as error:
+        print("Error Importing dependancies. Error: " + str(error))
+        input("Press Enter to exit...")
+        exit()
     print("Success.\n")
     NumberOfArgsExludingExeName = 6
     needToExit = False

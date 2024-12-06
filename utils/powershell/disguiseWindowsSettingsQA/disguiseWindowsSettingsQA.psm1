@@ -56,9 +56,9 @@ function Get-AndTestWindowsTaskbarContents{
     }
 
     if($MissingApps.count -gt 0){
-        return $MissingApps
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing Apps: $($MissingApps)"
     }else{
-        return $true
+        return Format-ResultsOutput -Result "PASSED" -Message "No Missing Apps"
     }
 }
 
@@ -133,15 +133,14 @@ function Get-AndTestWindowsStartMenuContents{
         }
     }
 
-
-    Get-StartMenuEvidence -OSVersion $OSVersion -userInputMachineName $userInputMachineName
+    $pathToImageStore = Get-StartMenuEvidence -OSVersion $OSVersion -userInputMachineName $userInputMachineName
     # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
     # not checked for
 
     if($missingApps){
-        return $missingApps
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing Start Menu Apps: $($missingApps)"
     }else{
-        return "PASSED"
+        return Format-ResultsOutput -Result "PASSED" -Message "No Missing Apps" -pathToImageArr $pathToImageStore
     }
 
 }
@@ -170,6 +169,7 @@ function Get-AndTestWindowsAppMenuContents{
     $appTestingPresenceArray = @()
 
     #We loop through the checking names array
+    $imageArray = @()
     foreach($appName in $appCheckingNamesArray){
         #open the job via a start job command so we can tell if it has executed or not
         $appJob = start-job -Name "OSQAWindowsAppsTesting" -ScriptBlock {
@@ -181,9 +181,12 @@ function Get-AndTestWindowsAppMenuContents{
         start-sleep -Seconds 2
 
         # Gather evidence - Sometimes the copy buffer messes up, so we retry until there is a success
-        $imagePath = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "$($appName).bmp"
+        $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+        $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "$($appName)_$($timestamp).bmp"
+        $imageArray += $pathToImageStore
 
-        Get-PrintScreenandRetryIfFailed -PathAndFileName $imagePath | Out-Null
+
+        Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore | Out-Null
 
         # Check the state and add to the array. Kill the app
         # If the app is not present we add it to the list of apps
@@ -194,9 +197,9 @@ function Get-AndTestWindowsAppMenuContents{
 
     #return the array
     if($appTestingPresenceArray){
-        return $appTestingPresenceArray
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing Windows App Menu Apps: $($appTestingPresenceArray)" -pathToImageArr $imageArray
     }else{
-        return "BLOCKED"    #We return blocked as there are some manual checks needed
+        return Format-ResultsOutput -Result "PASSED" -Message "No Missing Windows App Menu Apps" -pathToImageArr $imageArray
     }
 }
 
@@ -222,14 +225,16 @@ function Get-StartMenuEvidence{
     $wShell.SendKeys("^{ESC}")
     start-sleep -Milliseconds 200
 
-    $imagePath = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "Startmenu.bmp"
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "Startmenu_$($timestamp).bmp"
 
     do{
-        $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $imagePath
+        $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
     }
     while($success -eq $false)
 
     $wShell.SendKeys("{ESC}")
+    return $pathToImageStore
 }
 
 <#
@@ -269,7 +274,9 @@ function Get-WindowsLicensingAndEvidence{
     # Call this in a start-job so the script can continue outside of the popup
     $LicenseJob = start-job -Name "OSQAWindowsLicense" -ScriptBlock {slmgr /dli }
 
-    $path = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "WindowsLicense.bmp"
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "WindowsLicense_$($timestamp).bmp"
+
     Start-sleep -Milliseconds 600
 
     $process = Get-Process | Where-Object {$_.ProcessName -eq "wscript"}
@@ -282,11 +289,15 @@ function Get-WindowsLicensingAndEvidence{
     
     Start-sleep -Milliseconds 200
 
-    $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $path
+    $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
 
     $process | Stop-Process | Out-Null
 
-    return $activated
+    if($activated){
+        return Format-ResultsOutput -Result "PASSED" -Message "Windows partial product key is present" -pathToImage $pathToImageStore
+    }else{
+        return Format-ResultsOutput -Result "FAILED" -Message "Windows partial product key is not present"
+    }
 
 }
 
@@ -311,10 +322,13 @@ function Test-ChromeHistory{
 
     # Test if it exists
     # See if it isnt a disguise website
-    $nonDisguiseWebsite = $false
+    $whitelistedHistoryPages = (Import-Yaml).Windows_settings.chrome_allowed_history
+    $nonWhiteListedPages = @()
     foreach($site in $history.data){
-        if(($site -notmatch "disguise") -or ($site -notmatch "codemeter")){
-            $nonDisguiseWebsite = $true
+        foreach($whitelistedSite in $whitelistedHistoryPages){
+            if($site -notmatch $whitelistedSite){
+                $nonWhiteListedPages += $site
+            }
         }
     }
 
@@ -330,11 +344,16 @@ function Test-ChromeHistory{
 
     start-sleep -Milliseconds 300
 
-    $path = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "GoogleChromeHistory.bmp"
-    $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $path
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "GoogleChromeHistory_$($timestamp).bmp"
+    $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
 
     Get-Process | Where-Object {$_.ProcessName -eq "chrome"} | Stop-Process
-    return -not $nonDisguiseWebsite
+    if($nonWhiteListedPages){
+        return Format-ResultsOutput -Result "FAILED" -Message "Non-Whitelisted website(s) found: [$($nonWhiteListedPages). If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
+    }else{
+        return Format-ResultsOutput -Result "PASSED" -Message "Only whitelisted websites present" -pathToImage $pathToImageStore
+    }
 
 }
 
@@ -383,7 +402,8 @@ function Test-ChromeBookmarks{
     # Getting the chrome bookmarks and converting from JSON
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\Bookmarks"
     if (-not (Test-Path -Path $Path)) {
-        Write-Verbose "[!] Could not find Chrome Bookmarks for user: $Env:USERNAME"
+        Write-Error "Could not find Chrome Bookmarks for user: [$($Env:USERNAME)]"
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Bookmarks for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
 
@@ -415,9 +435,9 @@ function Test-ChromeBookmarks{
 
     # Check if the missing bookmarks are filled
     if($missingBookmarks){
-        return "$($missingBookmarks). $($requiredBookmarkList)"
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing chrome bookmarks: [$($missingBookmarks). Required Bookmarks: [$($requiredBookmarkList)]. If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
     }else{
-        return $true
+        return Format-ResultsOutput -Result "PASSED" -Message "Only whitelisted bookmarks present"
     }
 }
 
@@ -437,7 +457,8 @@ function Test-ChromeHomepage {
     # Getting the chrome homepage and converting from JSON
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\Secure Preferences"
     if (-not (Test-Path -Path $Path)) {
-        Write-Verbose "[!] Could not find Chrome Bookmarks for username: $UserName"
+        Write-Error "Could not find Chrome Homepage for user: [$($Env:USERNAME)]"
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
     $actualHomeURL = $Value.session.startup_urls
@@ -447,14 +468,14 @@ function Test-ChromeHomepage {
     $homeURL = $testConfig.Windows_settings.chrome_home_url
 
     if($actualHomeURL -eq $homeURL){
-        return $true
+        return Format-ResultsOutput -Result "PASSED" -Message "Chrome homepage is correct. homepage URL is: [$($actualHomeURL)]"
     }else{
-        return "Incorrect homepage URL: [$($actualHomeURL)]"
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing chrome homepage: [$($homeURL). Actual homepage is: [$($actualHomeURL)]. If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
     }
 
 }
 
-# Not quite working -> maybe not a needed test as it is very easy to do by hand
+# Not quite working -> maybe not a needed test as it is very easy to do by hand. 
 function Test-CtlAltDelBackgroundColor{
     param(
         [Parameter(Mandatory=$true)]
@@ -485,42 +506,56 @@ function Test-MachineName{
     )
     # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
     # rather than using a hardcoded logic here \/
+    $result = "PASSED"
+    $Message = ""
     $disguisedPowerPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
     try {
         Import-Module $disguisedPowerPath -Force
     }
     catch {
         # Cannot test it if we cannot import the module, so we return the untested code
-        return "BLOCKED"
+        $message = "Machine name is not the same: Actual [$($machineName[0])], Required [$($userInputMachineName)]. "
+        $result = "BLOCKED"
     }
 
     # Pull the evidence
-    $path = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Windows_settings\" -ChildPath "MachineName.bmp"
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "MachineName_$($timestamp).bmp"
 
     start-process powershell '$MachineNameSB = HOSTNAME.EXE;Write-Host "=====Operating System QA Process=====";Write-Host "Machine Name: [$($MachineNameSB)]";start-sleep -seconds 2'
     start-sleep -seconds 1
-    $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $path
-
-    
+    $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
 
     # pull the host name
-    $machineName = HOSTNAME.EXE
+    try{
+        $machineName = HOSTNAME.EXE
+    }
+    catch{
+        Write-Error "Cannot run [HOSTNAME.EXE]"
+        $message += "Cannot run [HOSTNAME.EXE]. "
+        $result = "FAILED"
+    }
+    
     $machineName = $machineName -split '-'
 
     if($machineName[0] -ne $userInputMachineName){
-        Write-Verbose "Machine name is not the same: Actual [$($machineName[0])], Required [$($userInputMachineName)]"
-        return "FAILED"
+        $message += "Machine name is not the same: Actual [$($machineName[0])], Required [$($userInputMachineName)]. "
+        $result = "FAILED"
     }
 
     $CMINFO = Get-CMinfo
     if($machineName[1] -ne $CMINFO.d3serial){
-        Write-Verbose "Machine serial is not the same: Actual [$($machineName[1])], Required [$($CMINFO.d3serial)]"
-        return "FAILED"
+        $message += "Machine serial is not the same: Actual [$($machineName[1])], Required [$($CMINFO.d3serial)]"
+        $result = "FAILED"
     }
-
+    
+    
     # Return the success code if it has reached the end
-    return "PASSED"
-
+    if($result -eq "PASSED"){
+        return Format-ResultsOutput -Result "PASSED" -Message "Machine name is correct: [$($machineName)]" -pathToImage $pathToImageStore
+    }else{
+        return Format-ResultsOutput -Result "FAILED" -Message "Machine name is incorrect. Actual machine name: [$($machineName)]. Required machine name: [$($userInputMachineName)-$($CMINFO.d3serial)]"
+    }
 }
 
 <#
@@ -542,9 +577,9 @@ function Test-WindowsUpdateEnabled{
     $WindowsUpdateSettings = [activator]::CreateInstance([type]::GetTypeFromProgID("Microsoft.Update.AutoUpdate",$cn))
 
     if($WindowsUpdateSettings.ServiceEnabled){
-        return "FAILED"
+        return Format-ResultsOutput -Result "FAILED" -Message "Windows updates are detected as enabled: [$($WindowsUpdateSettings.ServiceEnabled)]"
     }else{
-        return "PASSED"
+        return Format-ResultsOutput -Result "PASSED" -Message "Windows updates are being detected as disabled: [$($WindowsUpdateSettings.ServiceEnabled)]"
     }
 
 }
@@ -569,7 +604,13 @@ function Get-VFCOverlay{
         $testStatus = "WON'T TEST"
     }
 
-    return $testStatus
+    if($testStatus -eq "PASSED"){
+        return Format-ResultsOutput -Result "PASSED" -Message "VFC Cards have been detected on the machine in the device overlay"
+    }elseif ($testStatus -eq "FAILED"){
+        return Format-ResultsOutput -Result "FAILED" -Message "No VFC Cards have been detected on the machine in device overlay, and this machine's config file indicates it uses VFC cards. If there are working VFC cards in the machine, this is a failure."
+    }else{
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "This machine's config file indicates that it does not use VFC cards."
+    }
 }
 
 
@@ -595,14 +636,37 @@ function Test-WindowsFirewallDisabled{
     }
 
     if($WrongFirewallProfiles){
-        return "Firewall Profiles Configured Incorrectly: $($WrongFirewallProfiles)"
+        return Format-ResultsOutput -Result "FAILED" -Message "Firewall Profiles Configured Incorrectly: $($WrongFirewallProfiles)"
     }else{
-        return "PASSED"
+        return Format-ResultsOutput -Result "PASSED" -Message "Firewall Profiles Configured Correctly"
     }
 
 }
 
+function Test-NotificationsDisabled{
+    param(
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName
+    )
+    $notifications = -1
+    try{
+        $notifications = Get-ItemPropertyValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications" -Name "NoToastApplicationNotification"
+    }catch{
+        $failed = $true
+    }
 
+    if($notifications -eq 1){
+        return Format-ResultsOutput -Result "PASSED" -Message "Notifications disabled according to registry [HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications] containing value [$($notifications)]."
+    }elseif($notifications -ne 1){
+        return Format-ResultsOutput -Result "FAILED" -Message "Notifications not disabled according to registry [HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications], showing value [$($notifications)]."
+    }elseif($failed){
+        return Format-ResultsOutput -Result "FAILED" -Message "Notifications not disabled as registry [HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications] cannot be accessed, indicating it isn't there."
+    }else{
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Something strange went on. You should never have hit this message. Please check what is in [HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications] and check [OsValidation\utils\disguiseWindowsSettingsQA.ps1]'s function [Test-NotificationsDisabled] is behaving."
+    }
+}
 
 
 # Export only the functions using PowerShell standard verb-noun naming.

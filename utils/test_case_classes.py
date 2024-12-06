@@ -8,6 +8,7 @@ class TestCase:
     testResult = ""
     testResultBool = ""
     testResultMessage = ""
+    testPathToImageArr = []
     testStatus = 100
 
     def __init__(self, testCode, testName, testResult):
@@ -18,6 +19,7 @@ class TestCase:
         self.testResultMessage = ""
         self.testStatus = 3
         self.printFormattedResults()
+        
 
     
     # Specific methods
@@ -83,6 +85,9 @@ class TestCase:
     def get_testStatusCode(self):
         return self.testStatus
     
+    def get_testImagePathArr(self):
+        return self.testPathToImageArr
+    
     # Setter methods:
     def set_testCode(self, testCode):
         self.testCode = testCode
@@ -104,4 +109,17 @@ class TestCase:
     def set_testStatusCode(self, statusCode):
         self.testStatus = statusCode
 
+    def set_testPathToImageArr(self, pathToImage):
+        print(f"immage array: {str(pathToImage)}")
+        if type(pathToImage) == list:
+            self.testPathToImageArr = pathToImage
+        elif type(pathToImage) == str:
+            self.testPathToImageArr = [pathToImage]
+        elif not pathToImage:
+            return
+        else:
+            raise TypeError("Error calling set_testPathToImageArr. Types passed in can only be [str] or [list].")
+
+    def add_testPathToImageArr(self, pathToImage):
+        self.testPathToImageArr += pathToImage
         

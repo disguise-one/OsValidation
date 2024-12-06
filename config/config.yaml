@@ -91,6 +91,11 @@ windows_settings:
 
   chrome_home_url:
     - "https://www.disguise.one/"
+  
+  chrome_allowed_history:
+    - "disguise"
+    - "codemeter"
+    - "testrail"
 
   taskbar_apps:
     - "File Explorer"

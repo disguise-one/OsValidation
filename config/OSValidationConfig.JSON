@@ -2,6 +2,6 @@
     "testRailAPI":"https://disguise.testrail.io/",
     "projectNumber": 2,
     "suite_id": 6279,
-    "userCredentialsPath": ".\\config\\UserCredentials.local.json",
-    "pathToDisguisePowerAndSecParentDir": "\\\\d3deploydev\\deploymentShare"
+    "pathToDisguisePowerAndSecParentDir": "\\\\d3deploydev\\deploymentShare",
+    "pathToOSValidationTempImageStore": "C:\\Windows\\Temp\\OSValidationImages"
 }

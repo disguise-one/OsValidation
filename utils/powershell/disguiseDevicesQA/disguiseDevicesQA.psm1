@@ -18,11 +18,18 @@ function Test-GraphicsCardControlPannel{
     Import-Module $path -Force
     $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
     Import-Module $path -Force
+    
 
-    $hw = Assert-Hardware
+    try{
+        $hw = Assert-Hardware
+    }catch{
+        write-error("Cannot gather hardware via [Assert-Hardware]:")
+        write-error($_)
+    }
+    
     if($hw.gpu.Manufacturer -eq "NVIDIA"){
+        write-Host("GPU Identified as NVIDIA")
         $process = $null
-
         Get-AppxPackage 'NVIDIACorp.NVIDIAControlPanel' | % { 
             Copy-Item -LiteralPath $_.InstallLocation -Destination $Env:USERPROFILE\Desktop -Recurse -Force  | Out-Null
             Start-Process "$Env:USERPROFILE\Desktop\NVIDIACorp.NVIDIAControlPanel_*\nvcplui.exe"  | Out-Null
@@ -32,8 +39,9 @@ function Test-GraphicsCardControlPannel{
         start-sleep -Seconds 2
 
         if($process){
-            $path = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Devices\" -ChildPath "NvidiaControlPannel.bmp"
-            Get-PrintScreenandRetryIfFailed -PathAndFileName $path | Out-Null
+            $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+            $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "NvidiaControlPannel_$($timestamp).bmp"
+            Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore | Out-Null
             Stop-Process -Name $process.Name | Out-Null
             Wait-Process -Name $process.Name | Out-Null
         }
@@ -43,6 +51,7 @@ function Test-GraphicsCardControlPannel{
             $command = {Remove-Item "$Env:USERPROFILE\Desktop\NVIDIACorp.NVIDIAControlPanel_*" -Force -Recurse -WarningAction Continue}
             Invoke-Command -ScriptBlock $command | Out-Null
         }catch{
+            Write-Warning("Warning: Failed to delete [$($Env:USERPROFILE)\Desktop\NVIDIACorp.NVIDIAControlPanel_*]")
             $returnMessage += "Note: [Desktop\NVIDIACorp.NVIDIAControlPanel] could not be removed. Please remove manually. "
         }
 
@@ -61,12 +70,12 @@ function Test-GraphicsCardControlPannel{
             $testValue = "FAILED"
         }
 
-        return "$($testValue) $($returnMessage)"
+        return Format-ResultsOutput -Result $testValue -Message "$($returnMessage)"  -pathToImage $pathToImageStore
     }
     else{
         # AMD STUFF - Not implemented yet.
         # Write-Error "GPU Detected as AMD (or at least not NVIDIA). This functionality hasn't been implemented yet. Implement it?"
-        return "UNTESTED"
+        return Format-ResultsOutput -Result "BLOCKED" -Message "GPU Detected as AMD (or at least not NVIDIA). This functionality hasn't been implemented yet."
     }
 }
 
@@ -104,9 +113,9 @@ Function Test-CaptureCard{
 
     # If we dont need to test it we return this
     if(-not ($modelConfig.usesCaptureCards) -or ($modelConfig.AllowedCaptureCardTypes -notcontains $CaptureCardManufacturer)){
-        return "WON'T TEST"
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "Model config file indicates this machine does not use capture cards."
     }
-    # Only machines containing MATROX in their model configs should be passed into this section
+
     # Now we check in device manager
     $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "d3CaptureCards"
     Import-Module $path
@@ -114,9 +123,10 @@ Function Test-CaptureCard{
     Import-Module $path
 
     $captureCards = Get-CaptureCards
+
     # Check it returned 
     if(-not $captureCards){
-        return "FAILED - No [$($CaptureCardManufacturer)] devices in device manager (gathered via Get-CaptureCards)"
+        return Format-ResultsOutput -Result "FAILED" -Message "No [$($CaptureCardManufacturer)] devices in device manager (gathered via Get-CaptureCards)"
     }
 
     # Pull the required app from the config yaml
@@ -127,6 +137,7 @@ Function Test-CaptureCard{
     $returnString = ""
     $testValue = "PASSED"
     # loop through all the apps we need to test
+    $pathToAppsArray = @()
     foreach($app in $captureApps){
         # Instantiate the process to ensure it is clear at the start of each loop
         $process = $null
@@ -140,8 +151,10 @@ Function Test-CaptureCard{
         start-sleep -Seconds 2
         # if the app has started
         if($process){
-            $path = Join-Path -Path "Z:\OSQA\$($userInputMachineName)\$($OSVersion)\Images\Devices\" -ChildPath "$($app).bmp"
-            Get-PrintScreenandRetryIfFailed -PathAndFileName $path | Out-Null
+            $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+            $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "$($app)_$($timestamp).bmp"
+            $pathToAppsArray += $pathToImageStore
+            Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore | Out-Null
             Stop-Process -Name $process.Name | Out-Null
             Wait-Process -Name $process.Name | Out-Null
             
@@ -163,7 +176,7 @@ Function Test-CaptureCard{
         $returnString += "Capture card [$($captureCards.Model)]'s version detected as: [$([Version]$captureCardDriverModified)]. Choco package [$($CaptureCardManufacturer)_Driver]'s [publicPackageVersion]: [$([Version]$captureDriverTemplate.publicPackageVersion)] "
     }
     
-    return "$($testValue) $($returnString)"
+    return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)" -pathToImageArr $pathToAppsArray
 }
 
 

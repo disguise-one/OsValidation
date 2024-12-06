@@ -14,7 +14,7 @@ wmi>=1.5.1
 pyyaml>=6.0.1
 colorlog~=6.7.0
 pywinauto~=0.6.8
-Pillow~=10.1.0
+PIL
 Numpy~=1.26.1
 pytest
 pypiwin32
