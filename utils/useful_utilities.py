@@ -140,7 +140,12 @@ def RunPowershellAndParseOutput(PowershellCommand, testCaseID, testCaseName):
         PowershellOutput = subprocess.check_output(['powershell', '-executionpolicy', 'Bypass', '-Command', PowershellCommand], shell=False).strip().decode('utf-8')
     except Exception as error:
         printError("Error: Issue with running subprocess [" + str(PowershellCommand) + "]. Error Message: [" + str(error) + "]")
-        return None
+        # Should return an empty test case
+        testCase.set_testResult("BLOCKED")
+        testCase.set_testResultMessage(f"Error running powershell command: {str(error)}")
+        testCase.set_testPathToImageArr("")
+        testCase.printFormattedResults()
+        return testCase
     # we split it by new lines
     PowershellOutput = PowershellOutput.split("\n")
     # as there may be no \n inside a well run script, there may be nothing to split. So we need to check if this has worked, and if it has not split anything, convert 
@@ -155,7 +160,11 @@ def RunPowershellAndParseOutput(PowershellCommand, testCaseID, testCaseName):
     try:
         PythonObject = json.loads(JsonObjectAsString)
     except Exception as error:
-        printError("Error: Cannot convert output of command [" + str(PowershellCommand) + "] to JSON. \n\nOutput is [" + str(PowershellOutput) + "]. \n\nWith string attempting to be converted is [" + str(JsonObjectAsString) + "]")
+        printError("Error: Cannot convert output of command [" + str(PowershellCommand) + "] to JSON. \n\nOutput is [")
+        for line in PowershellOutput:
+            print(str(line))
+        
+        print("]. \n\nWith string attempting to be converted is \n[" + str(JsonObjectAsString) + "]")
         return None
     
     fullOutput = {

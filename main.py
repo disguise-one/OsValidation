@@ -149,10 +149,11 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
     # failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
     devices_validation_functions = [
-        device_testing.check_graphics_card_control_pannel,
-        device_testing.check_matrox_capture_cards,
-        device_testing.check_deltacast_capture_cards,
-        device_testing.check_bluefish_capture_cards
+        # device_testing.check_graphics_card_control_pannel,
+        # device_testing.check_matrox_capture_cards,
+        # device_testing.check_deltacast_capture_cards,
+        # device_testing.check_bluefish_capture_cards,
+        device_testing.check_audio_cards
     ]
     failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 

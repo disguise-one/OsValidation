@@ -170,13 +170,73 @@ Function Test-CaptureCard{
     $captureCardDriverModified = $captureCards.DriverVersion -replace 'v', ' '
 
     if(-not(Compare-Versions -Version1 $captureCardDriverModified -Version2 $captureDriverTemplate.publicPackageVersion -equal)){
-        $returnString += "Capture card [$($captureCards.Model)]'s driver version detected as: [$([Version]$captureCardDriverModified)]. This is different to the required version: [$([Version]$captureDriverTemplate.publicPackageVersion)] as found in choco package [Nvidia Driver and Software]'s [publicPackageVersion]. "
+        $returnString += "Capture card [$($captureCards.Model)]'s driver version detected as: [$([Version]$captureCardDriverModified)]. This is different to the required version: [$([Version]$captureDriverTemplate.publicPackageVersion)] as found in choco package [$($captureDriverTemplate.sharedPackageHandle)]'s [publicPackageVersion]. "
         $testValue = "FAILED"
     }else{
         $returnString += "Capture card [$($captureCards.Model)]'s version detected as: [$([Version]$captureCardDriverModified)]. Choco package [$($CaptureCardManufacturer)_Driver]'s [publicPackageVersion]: [$([Version]$captureDriverTemplate.publicPackageVersion)] "
     }
     
     return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)" -pathToImageArr $pathToAppsArray
+}
+
+Function Test-AudioCard{
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$OSVersion,
+        [Parameter(Mandatory=$true)]
+        [String]$userInputMachineName,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
+    )
+    # Make sure the test is required
+    if(-not (Import-ModelConfig -ReturnAsPowershellObject).usesHammerfallAudio){
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "Machine's config file indicates it does not use an audio card."
+    }
+
+    # Import the required modules
+    $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disguiseAudio"
+    Import-Module $path -Force
+    $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
+    Import-Module $path
+
+    # get the cards
+    $audioCard = Get-DisguiseAudioCards
+    # if theyre not an array, convert to one just in case we implement multiple card machines
+    if($audioCard.GetType().BaseType -notmatch "Array"){
+        $audioCard = @($audioCard)
+    }
+
+    # Get the chocolatey template for RME Audio
+    $audioTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($audioCard[0].Manufacturer)").ToUpper()} 
+    if(-not $audioTemplate){
+        Write-Error "Cannot find chocolatey package where the sharedPackageHandle matches with [$($audioCard[0].Manufacturer)]. The model specific config indicates it needs an audio card. Please check chocolatey packages to ensure it is there. Marking test as failed."
+        $returnString = "Cannot find chocolatey package where the sharedPackageHandle matches with [$($audioCard[0].Manufacturer)]. The model specific config indicates it needs an audio card. Please check chocolatey packages to ensure it is there. Marking test as failed."
+        $testValue = "FAILED"
+        return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)"
+    }
+
+    if(-not $audioTemplate.osValidationPackageVersion){
+        $returnString = "Chocolatey package [$($audioTemplate.sharedPackageHandle)]'s [osValidationPackageVersion] cannot be found. This indicates it is not filled in on OSBuilder. The function cannot be completed without this. Please enter into OSBuilder or complete test manually `n`nActual Driver Version: $($card.DriverVersion)"
+        write-host $returnString
+        $testValue = "FAILED"
+        return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)"
+    }
+
+    $returnString = ""
+    $testValue = "PASSED"
+
+    foreach($card in $audioCard){
+        Write-Host "Actual Driver Version: $($card.DriverVersion)"
+        Write-Host "Required Driver Version: $($audioTemplate.osValidationPackageVersion)"
+        if(-not(Compare-Versions -Version1 $card.DriverVersion -Version2 $audioTemplate.osValidationPackageVersion -equal)){
+            $returnString += "Audio card [$($card.Name)]'s driver version detected as: [$([Version]$card.DriverVersion)]. This is different to the required version: [$([Version]$audioTemplate.osValidationPackageVersion)] as found in choco package [$($card.Manufacturer)]'s [publicPackageVersion]. "
+            $testValue = "FAILED"
+            write-host $returnString
+        }else{
+            $returnString += "Audio card [$($card.Name)]'s version detected as: [$([Version]$card.DriverVersion)]. Choco package's required version is [$($card.Manufacturer)_Driver]'s [publicPackageVersion]: [$([Version]$audioTemplate.osValidationPackageVersion)] "
+        }
+    }
+    return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)"
 }
 
 
