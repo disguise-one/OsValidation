@@ -97,6 +97,9 @@ class bespokeLogging:
         else:
             self.log_file = os.path.join(self.log_dir, fileName)
 
+        if os.path.exists(self.log_file):
+            os.remove(self.log_file)
+
         print(f"Creating logging object with path: [{path}] called [{fileName}]...")
 
         # Create a logger object

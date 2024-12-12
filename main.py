@@ -178,7 +178,7 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
             logging.info('\n')
 
         logging.info("=====================================================================================")
-    logging.info()
+    logging.info("\n")
     logging.info("Finished Testing and Uploading.")
     logging.info(f"YOUR TEST RAIL TEST RUN ID IS: {str(runRequrestResponse["id"])}")
 

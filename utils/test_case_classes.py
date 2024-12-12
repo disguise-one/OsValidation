@@ -37,7 +37,7 @@ class TestCase:
     
     # This method then prints the formatted string
     def printFormattedResults(self):
-        logger.info(self.formatOutputString())
+        logging.info(self.formatOutputString())
     
     # Updates the result bool
     def updateResultBool(self):
