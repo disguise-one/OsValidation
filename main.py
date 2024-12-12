@@ -41,7 +41,7 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
         
 
 
-def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSValidationTemplatePath):
+def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType):
     """
     Main function to orchestrate various validation checks.
 
@@ -72,7 +72,6 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
     print("Creating Parameter Dictionary")
     OSValidationDict = {
         "OSVersion": OSVersion,
-        "ServerName": ServerName,
         "OSValidationTemplatePath" : OSValidationTemplatePath
     }
 
@@ -118,7 +117,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
             print("Creating New TestRail test run")
             runRequrestResponse = client.send_post(runAPIString, {
             "suite_id": str(OSValidationConfigJson["suite_id"]),
-            "name": str(ServerName + "_" + OSVersion + "_TESTING_NOT_REAL_RESULTS"),
+            "name": str(OSVersion + "_TESTING_NOT_REAL_RESULTS"),
             # "description": description,
             "include_all": True,
             })
@@ -132,31 +131,43 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
 
     # Run the windows validation functions for startup and windows sections
     failedUploads = []
-    windows_validation_functions = [
-        windows_settings.check_taskbar_icons,
-        windows_settings.check_start_menu_tiles,
-        windows_settings.check_app_menu_contents,
-        windows_settings.check_windows_licensing,
-        windows_settings.check_chrome_history,
-        windows_settings.check_chrome_homepage,
-        windows_settings.check_chrome_bookmarks,
-        windows_settings.check_machine_name,
-        windows_settings.check_notifications_disabled,
-        windows_settings.check_VFC_overlay,
-        windows_settings.check_windows_update_disabled,
-        windows_settings.check_firewall_disabled
-    ]
-    # failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
+    if TestType == "WIM":
+        windows_validation_functions = [
+            windows_settings.check_taskbar_icons,
+            windows_settings.check_start_menu_tiles,
+            windows_settings.check_app_menu_contents,
+            windows_settings.check_windows_licensing,
+            windows_settings.check_chrome_history,
+            windows_settings.check_chrome_homepage,
+            windows_settings.check_chrome_bookmarks,
+            windows_settings.check_notifications_disabled,
+            windows_settings.check_VFC_overlay,
+            windows_settings.check_windows_update_disabled,
+            windows_settings.check_firewall_disabled
+        ]
+        failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
-    devices_validation_functions = [
-        # device_testing.check_graphics_card_control_pannel,
-        # device_testing.check_matrox_capture_cards,
-        # device_testing.check_deltacast_capture_cards,
-        # device_testing.check_bluefish_capture_cards,
-        device_testing.check_audio_cards
-    ]
-    failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
+        devices_validation_functions = [
+            device_testing.check_graphics_card_control_pannel,
+            device_testing.check_matrox_capture_cards,
+            device_testing.check_deltacast_capture_cards,
+            device_testing.check_bluefish_capture_cards,
+            device_testing.check_audio_cards
+        ]
+        failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 
+    elif TestType == "USB" or "R20":
+        general_iso_functions = [
+            general_ISO_Tests.check_projects_reg_paths,
+            general_ISO_Tests.check_machine_name,
+            general_ISO_Tests.check_logs_present,
+            general_ISO_Tests.check_net_adapter_names,
+            general_ISO_Tests.check_audio_cards,
+            general_ISO_Tests.check_D_drive
+        ]
+        failedUploads += run_validation_group(general_iso_functions, "ISO Tests", OSValidationDict, runRequrestResponse, client, "ISO Tests")
+
+    
     if(failedUploads):
         print("==================================Failed Uploads=====================================")
         useful_utilities.printError("MANUAL UPLOAD REQUIRED...")
@@ -169,6 +180,7 @@ def main(testRun, ServerName, OSVersion, testrailUsername, testrailPassword, OSV
         print("=====================================================================================")
     print()
     print("Finished Testing and Uploading.")
+    print(f"YOUR TEST RAIL TEST RUN ID IS: {str(runRequrestResponse["id"])}")
 
 
     
@@ -235,7 +247,7 @@ if __name__ == "__main__":
         from utils import testrail
         import subprocess, json, re, base64, sys, select, urllib
         import numpy as np
-        from utils import windows_settings, useful_utilities, device_testing
+        from utils import windows_settings, useful_utilities, device_testing, general_ISO_Tests
     except Exception as error:
         print("Error Importing dependancies. Error: " + str(error))
         input("Press Enter to exit...")
@@ -256,7 +268,7 @@ if __name__ == "__main__":
             input("Press enter to exit...")
             exit()
 
-        testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath = sys.argv[1:NumberOfArgsExludingExeName + 1]
+        testRun, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType = sys.argv[1:NumberOfArgsExludingExeName + 1]
 
         try:
             testRun = int(testRun)
@@ -271,7 +283,7 @@ if __name__ == "__main__":
             exit()
 
 
-        if((testRun or osFamilyName or osBuildName or testrailUsername or testrailPassword) == ""):
+        if((testRun or osBuildName or testrailUsername or testrailPassword) == ""):
             useful_utilities.printError("All 5 arguments must be passed in. Exiting script")
             input("Press Enter to continue...")
             exit()
@@ -283,13 +295,14 @@ if __name__ == "__main__":
         input("Exiting script. Press enter to exit...")
         exit()
 
-    osFamilyName = osFamilyName.strip()
     osBuildName = osBuildName.strip()
     testrailUsername = testrailUsername.strip()
     testrailPassword = testrailPassword.strip()
 
+    print(f"Test Type detected as: [{TestType}]")
+
     try:
-        main(testRun, osFamilyName, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath)
+        main(testRun, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType)
     except Exception as error:
         useful_utilities.printError("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")

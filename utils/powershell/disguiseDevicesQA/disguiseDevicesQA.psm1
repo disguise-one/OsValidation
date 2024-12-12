@@ -9,8 +9,6 @@ function Test-GraphicsCardControlPannel{
         [Parameter(Mandatory=$true)]
         [String]$OSVersion,
         [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName,
-        [Parameter(Mandatory=$true)]
         [String]$pathToOSValidationTemplate
     )
     # Importing the required modules
@@ -98,8 +96,6 @@ Function Test-CaptureCard{
         [Parameter(Mandatory=$true)]
         [String]$OSVersion,
         [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName,
-        [Parameter(Mandatory=$true)]
         [String]$CaptureCardManufacturer,
         [Parameter(Mandatory=$true)]
         [String]$pathToOSValidationTemplate
@@ -183,8 +179,6 @@ Function Test-AudioCard{
     param(        
         [Parameter(Mandatory=$true)]
         [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName,
         [Parameter(Mandatory=$true)]
         [String]$pathToOSValidationTemplate
     )

@@ -27,9 +27,7 @@ It tests if they appear there and returns any missing apps
 function Get-AndTestWindowsTaskbarContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     $TaskbarPinnedContents = Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar" | Select-Object -ExpandProperty Name
     # Using a traditional for loop as i need to index through the array and change values
@@ -73,9 +71,7 @@ These are the default apps though, so model specific checks need to take place
 function Get-AndTestWindowsStartMenuContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     # It depends on if the machien is windows 10 or 11, on windows 10 it will be an xml. On windows 11 its a JSON file
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
@@ -133,7 +129,7 @@ function Get-AndTestWindowsStartMenuContents{
         }
     }
 
-    $pathToImageStore = Get-StartMenuEvidence -OSVersion $OSVersion -userInputMachineName $userInputMachineName
+    $pathToImageStore = Get-StartMenuEvidence -OSVersion $OSVersion
     # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
     # not checked for
 
@@ -155,9 +151,7 @@ and then tries to open each one. If it cannot it returns the name of that one.
 function Get-AndTestWindowsAppMenuContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     #Set up the array to store the app names we want to check
     # psr - stepps recorder
@@ -212,9 +206,7 @@ This gathers the evidence of the startmenu so it can be uploaded. It sends a win
 function Get-StartMenuEvidence{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     <#
         As we cannot use more sophisticated methods to grab the screen contents (due to antivirus saying we cant), 
@@ -246,9 +238,7 @@ A function to gather if windows is licensed on this machine. There are many ways
 function Get-WindowsLicensingAndEvidence{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
 
     Add-Type @"
@@ -312,9 +302,7 @@ it is clear
 function Test-ChromeHistory{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
 
     # Get the history
@@ -394,9 +382,7 @@ Then parses the
 function Test-ChromeBookmarks{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
 
     # Getting the chrome bookmarks and converting from JSON
@@ -449,9 +435,7 @@ listed in the config.yaml
 function Test-ChromeHomepage {
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
 
     # Getting the chrome homepage and converting from JSON
@@ -494,81 +478,13 @@ function Test-CtlAltDelBackgroundColor{
 
 <#
 .Description
-Test-MachineName gets passed the machine it should be, and checks if it is the same as when running HOSTNAME.EXE
-#>
-
-function Test-MachineName{
-    param(
-        [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
-    )
-    # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
-    # rather than using a hardcoded logic here \/
-    $result = "PASSED"
-    $Message = ""
-    $disguisedPowerPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
-    try {
-        Import-Module $disguisedPowerPath -Force
-    }
-    catch {
-        # Cannot test it if we cannot import the module, so we return the untested code
-        $message = "Machine name is not the same: Actual [$($machineName[0])], Required [$($userInputMachineName)]. "
-        $result = "BLOCKED"
-    }
-
-    # Pull the evidence
-    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
-    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "MachineName_$($timestamp).bmp"
-
-    start-process powershell '$MachineNameSB = HOSTNAME.EXE;Write-Host "=====Operating System QA Process=====";Write-Host "Machine Name: [$($MachineNameSB)]";start-sleep -seconds 2'
-    start-sleep -seconds 1
-    $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
-
-    # pull the host name
-    try{
-        $machineName = HOSTNAME.EXE
-    }
-    catch{
-        Write-Error "Cannot run [HOSTNAME.EXE]"
-        $message += "Cannot run [HOSTNAME.EXE]. "
-        $result = "FAILED"
-    }
-    
-    $machineName = $machineName -split '-'
-
-    if($machineName[0] -ne $userInputMachineName){
-        $message += "Machine name is not the same: Actual [$($machineName[0])], Required [$($userInputMachineName)]. "
-        $result = "FAILED"
-    }
-
-    $CMINFO = Get-CMinfo
-    if($machineName[1] -ne $CMINFO.d3serial){
-        $message += "Machine serial is not the same: Actual [$($machineName[1])], Required [$($CMINFO.d3serial)]"
-        $result = "FAILED"
-    }
-    
-    
-    # Return the success code if it has reached the end
-    if($result -eq "PASSED"){
-        return Format-ResultsOutput -Result "PASSED" -Message "Machine name is correct: [$($machineName)]" -pathToImage $pathToImageStore
-    }else{
-        return Format-ResultsOutput -Result "FAILED" -Message "Machine name is incorrect. Actual machine name: [$($machineName)]. Required machine name: [$($userInputMachineName)-$($CMINFO.d3serial)]"
-    }
-}
-
-<#
-.Description
 Test-WindowsUpdateEnabled uses a load with partial name, to gather the windows update settings. If it returns an empty field in ServiceEnabled
 it is disabled
 #>
 function Test-WindowsUpdateEnabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     # I thought it needed to be the computer name, however for some reason it needs to be empty to return. This works, as if you run the script on your
     # laptop, you will return a 'True' in the ServiceEnabled field
@@ -591,9 +507,7 @@ Get-VFCOverlay checks if there is a VFC card in the device manager. It only chec
 function Get-VFCOverlay{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
 
@@ -622,9 +536,7 @@ and if it is enabled it passes back which one is configured incorrectly
 function Test-WindowsFirewallDisabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
 
     $FirewallSettings = Get-NetFirewallProfile
@@ -646,9 +558,7 @@ function Test-WindowsFirewallDisabled{
 function Test-NotificationsDisabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
-        [Parameter(Mandatory=$true)]
-        [String]$userInputMachineName
+        [String]$OSVersion
     )
     $notifications = -1
     try{
