@@ -31,12 +31,12 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
             logging.exception(f"An unexpected error occurred when running function [{str(function.__name__)}]: {e}")
 
     # Upload the batch to testrail
-    print("\033[1mEnd of " + str(GroupName) + ". Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
+    logging.info("\033[1mEnd of " + str(GroupName) + ". Starting TestRail API calls to upload results. Please do not interrupt...\033[0m")
     failedUploads = useful_utilities.uploadTestBatchToTestRail(TestRunArray, runRequrestResponse, client)
     if(failedUploads):
-        useful_utilities.printError("There may have been some failed uploads. Please check at the end for manual uploads of test results.")
+        logging.error("There may have been some failed uploads. Please check at the end for manual uploads of test results.")
     
-    print("=====================================================================================")
+    logging.info("=====================================================================================")
     return failedUploads
         
 
@@ -56,20 +56,20 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
     #   SECTION OPERATIONS:
     # In this section we go through the config file, ensuring it is there, and reading it
 
-    print("==============================Starting main() function=================================")
-    print("Loading OS Validation Config...")
+    logging.info("==============================Starting main() function=================================")
+    logging.info("Loading OS Validation Config...")
     # Pull the JSON file.
     OSValidationConfigJson = useful_utilities.ImportOSValidationConfig()
 
     # sanity checks to ensure above has worked
     if(OSValidationConfigJson == None):
-        useful_utilities.printError("Cannot access OSValidationConfig.json. This is necessary for the script to continue. Exiting.")
+        logging.error("Cannot access OSValidationConfig.json. This is necessary for the script to continue. Exiting.")
         input("Press Enter to continue...")
         exit()
 
-    print("Success")
+    logging.info("Success")
 
-    print("Creating Parameter Dictionary")
+    logging.info("Creating Parameter Dictionary")
     OSValidationDict = {
         "OSVersion": OSVersion,
         "OSValidationTemplatePath" : OSValidationTemplatePath
@@ -83,14 +83,14 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
     # The TestRail API uses python binding: https://support.testrail.com/hc/en-us/articles/7077135088660-Binding-Python#01G68HCTTNHFT1WVDXKW4BC4WP
     # Where you ab either get or post to the API, with a standard format filter to identify what you want to do
     # Eg send_get('get_runs/2&suite_id=6279') says get the runs of project 2 with suite id of 6279
-    print("Setting up local TestRail API Client")
+    logging.info("Setting up local TestRail API Client")
     client = testrail.APIClient(str(OSValidationConfigJson['testRailAPI']))
     client.user = str(testrailUsername)
     client.password = str(testrailPassword)
 
     projectNumber = OSValidationConfigJson["projectNumber"]
     suite_id = OSValidationConfigJson["suite_id"]
-    print("Success")
+    logging.info("Success")
 
     
     # Setting up the new run, if we want it to. Otherwise we get the existing run
@@ -114,7 +114,7 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
         # Send a requrest to the API to create a test run
 
         if(testRun == -1):
-            print("Creating New TestRail test run")
+            logging.info("Creating New TestRail test run")
             runRequrestResponse = client.send_post(runAPIString, {
             "suite_id": str(OSValidationConfigJson["suite_id"]),
             "name": str(OSVersion + "_TESTING_NOT_REAL_RESULTS"),
@@ -122,10 +122,10 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
             "include_all": True,
             })
         else:
-            print("Getting previous test run with id [" + str(testRun) + "]")
+            logging.info("Getting previous test run with id [" + str(testRun) + "]")
             runRequrestResponse = client.send_get(runAPIString)
     except Exception as error:
-        useful_utilities.printError("An error occured when trying to communicate with TestRail API: " + str(error))
+        logging.error("An error occured when trying to communicate with TestRail API: " + str(error))
         input("Failed getting/creating testrail API call. Exiting script. Press enter to exit...")
         exit()
 
@@ -169,18 +169,18 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
 
     
     if(failedUploads):
-        print("==================================Failed Uploads=====================================")
-        useful_utilities.printError("MANUAL UPLOAD REQUIRED...")
-        print("There seems to be some test results that failed to upload to TestRail. Please do this manually, and/or report the bug that is stopping the upload.\n\n")
-        print("Failed Uploads: ")
+        logging.info("==================================Failed Uploads=====================================")
+        logging.info("MANUAL UPLOAD REQUIRED...")
+        logging.info("There seems to be some test results that failed to upload to TestRail. Please do this manually, and/or report the bug that is stopping the upload.\n\n")
+        logging.info("Failed Uploads: ")
         for fail in failedUploads:
-            print(fail)
-            print()
+            logging.info(fail)
+            logging.info('\n')
 
-        print("=====================================================================================")
-    print()
-    print("Finished Testing and Uploading.")
-    print(f"YOUR TEST RAIL TEST RUN ID IS: {str(runRequrestResponse["id"])}")
+        logging.info("=====================================================================================")
+    logging.info()
+    logging.info("Finished Testing and Uploading.")
+    logging.info(f"YOUR TEST RAIL TEST RUN ID IS: {str(runRequrestResponse["id"])}")
 
 
     
@@ -243,28 +243,38 @@ if __name__ == "__main__":
     print("\nImporting required modules...")
     # Check that the requiements are installed - Only run this on first run to ensure all modules are installed
     try:
-        from utils.logger import logging
+        from utils.logger import logging, bespokeLogging
+        # from utils.logger import logger
         from utils import testrail
-        import subprocess, json, re, base64, sys, select, urllib
+        import subprocess, json, re, base64, sys, select, urllib, time
         import numpy as np
         from utils import windows_settings, useful_utilities, device_testing, general_ISO_Tests
     except Exception as error:
         print("Error Importing dependancies. Error: " + str(error))
         input("Press Enter to exit...")
         exit()
-    print("Success.\n")
+
+    try:
+        logs = bespokeLogging("C:\\Windows\\Temp", "OSValidationTempLog.log")
+    except Exception as error:
+        print("Error creating logging object. Error: " + str(error))
+        input("Press Enter to exit...")
+        exit()
+    
+    logging.info("Starting logs...")
+    logging.info("Success Importing Modules.\n")
     NumberOfArgsExludingExeName = 6
     needToExit = False
 
     try:
-        print("Parsing Arguments...")
+        logging.info("Parsing Arguments...")
 
         if(len(sys.argv) > NumberOfArgsExludingExeName + 1):
-            useful_utilities.printError("ERROR: Too many arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
+            ulogging.error("ERROR: Too many arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
             input("Press enter to exit...")
             exit()
         elif (len(sys.argv) < NumberOfArgsExludingExeName):
-            useful_utilities.printError("ERROR: Too few arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
+            logging.error("ERROR: Too few arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
             input("Press enter to exit...")
             exit()
 
@@ -273,38 +283,48 @@ if __name__ == "__main__":
         try:
             testRun = int(testRun)
         except Exception as error:
-            input("Cannot convert [testRun] to int. Execption: " + str(error) + "\n\n Press enter to exit...")
+            logging.error("Cannot convert [testRun] to int. Execption: " + str(error))
+            input("Press enter to exit...")
             exit()
 
         try:
             testrailPassword = base64.b64decode(testrailPassword).decode('ascii')
         except Exception as error:
-            input("Cannot decode [testrailPassword]. Execption: " + str(error) + "\n\n Press enter to exit...")
+            logging.error("Cannot decode [testrailPassword]. Execption: " + str(error))
+            input("\n\n Press enter to exit...")
             exit()
 
-
+        # NEEDS SOME LOVE \/
         if((testRun or osBuildName or testrailUsername or testrailPassword) == ""):
-            useful_utilities.printError("All 5 arguments must be passed in. Exiting script")
+            logging.error("All 5 arguments must be passed in. Exiting script")
             input("Press Enter to continue...")
             exit()
         
-        print("Success.\n")
+        logging.info("Success.\n")
     
     except Exception as error:
-        useful_utilities.printError("An error occured before main() could be executed: " + str(error))
+        logging.error("An error occured before main() could be executed: " + str(error))
         input("Exiting script. Press enter to exit...")
         exit()
 
     osBuildName = osBuildName.strip()
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+
+    try:
+        logs.change_log_path(f"N:\\OSValidation\\logs\\{osBuildName}{timestr}.log")
+    except Exception as error:
+        logging.error(f"Something went wrong changing log directory: [{error}]")
+        
+
     testrailUsername = testrailUsername.strip()
     testrailPassword = testrailPassword.strip()
 
-    print(f"Test Type detected as: [{TestType}]")
+    logging.info(f"Test Type detected as: [{TestType}]")
 
     try:
         main(testRun, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType)
     except Exception as error:
-        useful_utilities.printError("An error occured when running main(): " + str(error))
+        logging.error("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")
         exit()
     input("Press Enter to exit...")

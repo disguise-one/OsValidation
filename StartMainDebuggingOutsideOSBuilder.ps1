@@ -8,7 +8,8 @@ $encodedTestrailPassword = "UTtBLllfKCQ8ajNjZ1UySmtkS3dCWA=="
 $testRailTestRunId = 14526
 $pathToStoreOSValidationTemplateObject = "C:\Windows\Temp\OSValidationTemplate.ps1"
 $osFamilyName_encoded = $osFamilyName.Replace("``", "````").Replace("`"", "```"")
-$ArgumentStringArray = @( $pathToOSValidationMainPythonScript, $testRailTestRunId, "`"$($osFamilyName_encoded)`"", "`"$($osBuildName)`"", $testRailUsername, $encodedTestrailPassword, $pathToStoreOSValidationTemplateObject )
+$testType = "USB"
+$ArgumentStringArray = @( $pathToOSValidationMainPythonScript, $testRailTestRunId, "`"$($osBuildName)`"", $testRailUsername, $encodedTestrailPassword, $pathToStoreOSValidationTemplateObject, $testType)
 
 #and Call Script
 Write-Host "Opening Python Script [$($pathToOSValidationMainPythonScript)] as a new process to Validate the [$($osFamilyName)][$($osBuildName)] OS " -ForegroundColor Blue

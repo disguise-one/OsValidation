@@ -1,6 +1,7 @@
 # This is a testCase class we can use to create objects as currently the system just output's a string
 import datetime
 import time
+import logging
 
 class TestCase:
     testCode = ""   # <- The test case ID
@@ -27,7 +28,7 @@ class TestCase:
     def formatOutputString(self):
         ts = time.time()
         ct = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        return ct + " | " + self.testCode + " | " + self.testName + ": " + self.testResult
+        return " | " + self.testCode + " | " + self.testName + ": " + self.testResult
     
     def formatSendingResultsMessage(self):
         ts = time.time()
@@ -36,7 +37,7 @@ class TestCase:
     
     # This method then prints the formatted string
     def printFormattedResults(self):
-        print(self.formatOutputString())
+        logger.info(self.formatOutputString())
     
     # Updates the result bool
     def updateResultBool(self):
@@ -110,7 +111,6 @@ class TestCase:
         self.testStatus = statusCode
 
     def set_testPathToImageArr(self, pathToImage):
-        print(f"immage array: {str(pathToImage)}")
         if type(pathToImage) == list:
             self.testPathToImageArr = pathToImage
         elif type(pathToImage) == str:
