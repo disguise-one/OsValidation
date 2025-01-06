@@ -154,7 +154,7 @@ Test-MachineName gets passed the machine it should be, and checks if it is the s
 function Test-MachineName{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
     # rather than using a hardcoded logic here \/

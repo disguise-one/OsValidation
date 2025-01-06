@@ -1,9 +1,9 @@
 
 def gather_user_idenitifaction_of_run():
     ServerName = subprocess.check_output(['powershell', "[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); return [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the Server you are testing as it appears on the config file name (or for multi-machine config files, CodeMeterProductCodes -> d3Model):', 'Auto OS QA')"]).strip().decode('utf-8')
-    OSVersion = subprocess.check_output(['powershell', "[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); return [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the OS version you are testing:', 'Auto OS QA')"]).strip().decode('utf-8')
+    TestRunTitle = subprocess.check_output(['powershell', "[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); return [Microsoft.VisualBasic.Interaction]::InputBox('Please enter the OS version you are testing:', 'Auto OS QA')"]).strip().decode('utf-8')
     # description = subprocess.check_output(['powershell', "[void][Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic'); return [Microsoft.VisualBasic.Interaction]::InputBox('Do you want to add any optional description to your test run? Enter nothing if no:', 'Auto OS QA')"]).strip().decode('utf-8')
-    return ServerName, OSVersion #, description
+    return ServerName, TestRunTitle #, description
 
 
 def run_validation_group(validation_functions, group_name, OSValidationDict, runRequrestResponse, client, GroupName):
@@ -18,9 +18,11 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
         group_name (str): Name of the validation group for logging purposes.
     """
     TestRunArray = []
+    print()
     logging.info(f"--- Running Test Group {group_name} ---")
     for function in validation_functions:
         try:
+            print()
             TestRunArray.append(function(OSValidationDict))
             if(TestRunArray[len(TestRunArray)-1].get_testImagePathArr() != ''):
                 print(str(TestRunArray[len(TestRunArray)-1].get_testImagePathArr()))
@@ -41,7 +43,7 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
         
 
 
-def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType):
+def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType):
     """
     Main function to orchestrate various validation checks.
 
@@ -55,8 +57,9 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
     # ===================== Config file creation ===================== #
     #   SECTION OPERATIONS:
     # In this section we go through the config file, ensuring it is there, and reading it
-
+    print()
     logging.info("==============================Starting main() function=================================")
+    print()
     logging.info("Loading OS Validation Config...")
     # Pull the JSON file.
     OSValidationConfigJson = useful_utilities.ImportOSValidationConfig()
@@ -71,7 +74,7 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
 
     logging.info("Creating Parameter Dictionary")
     OSValidationDict = {
-        "OSVersion": OSVersion,
+        "TestRunTitle": TestRunTitle,
         "OSValidationTemplatePath" : OSValidationTemplatePath
     }
 
@@ -83,47 +86,54 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
     # The TestRail API uses python binding: https://support.testrail.com/hc/en-us/articles/7077135088660-Binding-Python#01G68HCTTNHFT1WVDXKW4BC4WP
     # Where you ab either get or post to the API, with a standard format filter to identify what you want to do
     # Eg send_get('get_runs/2&suite_id=6279') says get the runs of project 2 with suite id of 6279
+    print()
     logging.info("Setting up local TestRail API Client")
-    client = testrail.APIClient(str(OSValidationConfigJson['testRailAPI']))
+    apiRootURL = OSValidationConfigJson['testRailAPI']
+    if( not apiRootURL ):
+        logging.error("Could not retrieve the setting [testRailAPI] from OSValidationConfig.Json")
+        input("Could not retrieve the setting [testRailAPI] from OSValidationConfig.Json. Press enter to exit...")
+        exit()
+    client = testrail.APIClient(str(apiRootURL))
     client.user = str(testrailUsername)
     client.password = str(testrailPassword)
-
     projectNumber = OSValidationConfigJson["projectNumber"]
-    suite_id = OSValidationConfigJson["suite_id"]
+    if( not projectNumber ):
+        logging.error("Could not retrieve the setting [projectNumber] from OSValidationConfig.Json")
+        input("Could not retrieve the setting [projectNumber] from OSValidationConfig.Json. Press enter to exit...")
+        exit()
+    suite_id = OSValidationConfigJson["suite_id_"+TestType]
+    if( not suite_id ):
+        logging.error("Could not retrieve the setting ["+"suite_id_"+TestType+"] from OSValidationConfig.Json")
+        input("Could not retrieve the setting ["+"suite_id_"+TestType+"] from OSValidationConfig.Json. Press enter to exit...")
+        exit()
+    logging.info("TestRail API URL: " + str(apiRootURL))
+    logging.info("TestRail Project Number: " + str(projectNumber))
+    logging.info("TestRail Suite ID: " + str(suite_id))
     logging.info("Success")
 
-    
     # Setting up the new run, if we want it to. Otherwise we get the existing run
-
-    # if(testRun == -1):
-    #     runAPIString = 'add_run/' + str(urllib.parse.quote_plus(str(OSValidationConfigJson["projectNumber"]))) + '&suite_id=' + str(urllib.parse.quote_plus(str(suite_id))) + '&name=' + str(urllib.parse.quote_plus(ServerName + '_' + OSVersion))
-    # else:
-    #     runAPIString = 'get_run/'+ str(urllib.parse.quote_plus(str(testRun))) + '&suite_id=' + str(urllib.parse.quote_plus(str(suite_id))) + '&project_id='+ str(urllib.parse.quote_plus(str(OSValidationConfigJson["projectNumber"])))
-    
-    if(testRun == -1):
-        # runAPIString = 'add_run/' + str(OSValidationConfigJson["projectNumber"]) + '&suite_id=' +str(suite_id) + '&name=' + str(ServerName) + '_' + str(OSVersion)
-        runAPIString = 'add_run/' + str(OSValidationConfigJson["projectNumber"])
-    else:
-        runAPIString = 'get_run/'+str(testRun) + '&suite_id=' + str(suite_id) + '&project_id='+ str(OSValidationConfigJson["projectNumber"])
-    
     runRequrestResponse = -1
-
-    
-
     try:
         # Send a requrest to the API to create a test run
 
         if(testRun == -1):
-            logging.info("Creating New TestRail test run")
+            
+            runAPIString = 'add_run/' + str( projectNumber )
+            print()
+            logging.info("Creating New Test Run in TestRail")
             runRequrestResponse = client.send_post(runAPIString, {
-            "suite_id": str(OSValidationConfigJson["suite_id"]),
-            "name": str(OSVersion + "_TESTING_NOT_REAL_RESULTS"),
+            "suite_id": suite_id,
+            "name": str(TestRunTitle + "_TESTING_NOT_REAL_RESULTS"),
             # "description": description,
             "include_all": True,
             })
+            logging.info("Created Test Run [" + str( runRequrestResponse["id"] ) + "] Successfully")
         else:
-            logging.info("Getting previous test run with id [" + str(testRun) + "]")
+            runAPIString = 'get_run/'+str(testRun) + '&suite_id=' + str(suite_id) + '&project_id='+ str( projectNumber )
+            print()
+            logging.info("Retrieving Test Run [" + str(testRun) + "] from TestRail")
             runRequrestResponse = client.send_get(runAPIString)
+            logging.info("Retrieved Test Run [" + str( runRequrestResponse["id"] ) + "] Successfully")
     except Exception as error:
         logging.error("An error occured when trying to communicate with TestRail API: " + str(error))
         input("Failed getting/creating testrail API call. Exiting script. Press enter to exit...")
@@ -202,7 +212,7 @@ def main(testRun, OSVersion, testrailUsername, testrailPassword, OSValidationTem
     #         windows_settings.check_sticky_keys_disabled,
     #         windows_settings.check_windows_firewall_disabled
     #     ]
-    #     windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", OSVersion)
+    #     windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", TestRunTitle)
 
     #     # Group of functions for file handling validation
     #     file_handling_functions = [
@@ -255,22 +265,23 @@ if __name__ == "__main__":
         exit()
 
     try:
-        logs = bespokeLogging("C:\\Windows\\Temp", "OSValidationTempLog.log")
+        logs = bespokeLogging("C:\\Windows\\Logs", "OSValidationTempLog.log")
     except Exception as error:
         print("Error creating logging object. Error: " + str(error))
         input("Press Enter to exit...")
         exit()
     
     logging.info("Starting logs...")
-    logging.info("Success Importing Modules.\n")
+    logging.info("Success Importing Modules.")
     NumberOfArgsExludingExeName = 6
     needToExit = False
 
     try:
+        print()
         logging.info("Parsing Arguments...")
 
         if(len(sys.argv) > NumberOfArgsExludingExeName + 1):
-            ulogging.error("ERROR: Too many arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
+            logging.error("ERROR: Too many arguments passed into OSValidation Main script. Expected [5]. Received [" + str(len(sys.argv) - 1) + "]")
             input("Press enter to exit...")
             exit()
         elif (len(sys.argv) < NumberOfArgsExludingExeName):
@@ -278,7 +289,7 @@ if __name__ == "__main__":
             input("Press enter to exit...")
             exit()
 
-        testRun, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType = sys.argv[1:NumberOfArgsExludingExeName + 1]
+        testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType = sys.argv[1:NumberOfArgsExludingExeName + 1]
 
         try:
             testRun = int(testRun)
@@ -295,7 +306,7 @@ if __name__ == "__main__":
             exit()
 
         # NEEDS SOME LOVE \/
-        if((testRun or osBuildName or testrailUsername or testrailPassword) == ""):
+        if((testRun or testRunTitle or testrailUsername or testrailPassword) == ""):
             logging.error("All 5 arguments must be passed in. Exiting script")
             input("Press Enter to continue...")
             exit()
@@ -307,11 +318,11 @@ if __name__ == "__main__":
         input("Exiting script. Press enter to exit...")
         exit()
 
-    osBuildName = osBuildName.strip()
+    testRunTitle = testRunTitle.strip()
     timestr = time.strftime("%Y%m%d-%H%M%S")
 
     try:
-        logs.change_log_path(f"N:\\OSValidation\\logs\\{osBuildName}{timestr}.log")
+        logs.change_log_path(f"C:\\Windows\\Logs\\{testRunTitle}{timestr}.log")
     except Exception as error:
         logging.error(f"Something went wrong changing log directory: [{error}]")
         
@@ -319,10 +330,11 @@ if __name__ == "__main__":
     testrailUsername = testrailUsername.strip()
     testrailPassword = testrailPassword.strip()
 
+    print()
     logging.info(f"Test Type detected as: [{TestType}]")
 
     try:
-        main(testRun, osBuildName, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType)
+        main(testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType)
     except Exception as error:
         logging.error("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")

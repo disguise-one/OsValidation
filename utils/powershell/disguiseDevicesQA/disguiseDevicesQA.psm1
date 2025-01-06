@@ -7,7 +7,7 @@ Import-Module $d3OSQAUtilsPath -Force
 function Test-GraphicsCardControlPannel{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
+        [String]$TestRunTitle,
         [Parameter(Mandatory=$true)]
         [String]$pathToOSValidationTemplate
     )
@@ -94,7 +94,7 @@ function Test-GraphicsCardControlPannel{
 Function Test-CaptureCard{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
+        [String]$TestRunTitle,
         [Parameter(Mandatory=$true)]
         [String]$CaptureCardManufacturer,
         [Parameter(Mandatory=$true)]
@@ -178,7 +178,7 @@ Function Test-CaptureCard{
 Function Test-AudioCard{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion,
+        [String]$TestRunTitle,
         [Parameter(Mandatory=$true)]
         [String]$pathToOSValidationTemplate
     )

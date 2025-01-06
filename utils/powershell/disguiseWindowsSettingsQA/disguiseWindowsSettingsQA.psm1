@@ -27,7 +27,7 @@ It tests if they appear there and returns any missing apps
 function Get-AndTestWindowsTaskbarContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     $TaskbarPinnedContents = Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar" | Select-Object -ExpandProperty Name
     # Using a traditional for loop as i need to index through the array and change values
@@ -71,7 +71,7 @@ These are the default apps though, so model specific checks need to take place
 function Get-AndTestWindowsStartMenuContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     # It depends on if the machien is windows 10 or 11, on windows 10 it will be an xml. On windows 11 its a JSON file
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
@@ -129,7 +129,7 @@ function Get-AndTestWindowsStartMenuContents{
         }
     }
 
-    $pathToImageStore = Get-StartMenuEvidence -OSVersion $OSVersion
+    $pathToImageStore = Get-StartMenuEvidence -TestRunTitle $TestRunTitle
     # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
     # not checked for
 
@@ -151,7 +151,7 @@ and then tries to open each one. If it cannot it returns the name of that one.
 function Get-AndTestWindowsAppMenuContents{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     #Set up the array to store the app names we want to check
     # psr - stepps recorder
@@ -206,7 +206,7 @@ This gathers the evidence of the startmenu so it can be uploaded. It sends a win
 function Get-StartMenuEvidence{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     <#
         As we cannot use more sophisticated methods to grab the screen contents (due to antivirus saying we cant), 
@@ -238,7 +238,7 @@ A function to gather if windows is licensed on this machine. There are many ways
 function Get-WindowsLicensingAndEvidence{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
 
     Add-Type @"
@@ -302,7 +302,7 @@ it is clear
 function Test-ChromeHistory{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
 
     # Get the history
@@ -382,7 +382,7 @@ Then parses the
 function Test-ChromeBookmarks{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
 
     # Getting the chrome bookmarks and converting from JSON
@@ -435,7 +435,7 @@ listed in the config.yaml
 function Test-ChromeHomepage {
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
 
     # Getting the chrome homepage and converting from JSON
@@ -463,7 +463,7 @@ function Test-ChromeHomepage {
 function Test-CtlAltDelBackgroundColor{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     
     # This checks the registry containing what should be the info, however -> it isnt always correct
@@ -484,7 +484,7 @@ it is disabled
 function Test-WindowsUpdateEnabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     # I thought it needed to be the computer name, however for some reason it needs to be empty to return. This works, as if you run the script on your
     # laptop, you will return a 'True' in the ServiceEnabled field
@@ -507,7 +507,7 @@ Get-VFCOverlay checks if there is a VFC card in the device manager. It only chec
 function Get-VFCOverlay{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
 
@@ -536,7 +536,7 @@ and if it is enabled it passes back which one is configured incorrectly
 function Test-WindowsFirewallDisabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
 
     $FirewallSettings = Get-NetFirewallProfile
@@ -558,7 +558,7 @@ function Test-WindowsFirewallDisabled{
 function Test-NotificationsDisabled{
     param(
         [Parameter(Mandatory=$true)]
-        [String]$OSVersion
+        [String]$TestRunTitle
     )
     $notifications = -1
     try{

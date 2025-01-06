@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory=$true)]
     [String]$testRailTestRunID,
     [Parameter(Mandatory=$true)]
-    [String]$OSBuildName,
+    [String]$testRunTitle,
     [Parameter(Mandatory=$true)]
     [String]$testRailUsername,
     [Parameter(Mandatory=$true)]
@@ -32,7 +32,7 @@ try{
     return
 }
 
-$argumentStringArray = @($PathToOSValidationMainPythonScript, $testRailTestRunID, "`"$($OSBuildName)`"", $testRailUsername, $EncodedTestRailPassword, $PathToStoreOSValidationTemplateObject, $TestType)
+$argumentStringArray = @($PathToOSValidationMainPythonScript, $testRailTestRunID, "`"$($testRunTitle)`"", $testRailUsername, $EncodedTestRailPassword, $PathToStoreOSValidationTemplateObject, $TestType)
 
 try{
     Start-Process $PathToPythonInterpreter -Verb RunAs -ArgumentList $argumentStringArray -WorkingDirectory $PSScriptRoot
