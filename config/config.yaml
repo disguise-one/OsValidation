@@ -102,10 +102,19 @@ windows_settings:
     - "Google Chrome"
   
   start_menu_apps_default:
-    - "Google Chrome"
-    - "d3manager"
-    - "Media Player Classic"
-    - "Recycle Bin"
+    win10:
+      - "Google Chrome"
+      - "d3manager"
+      - "Media Player Classic"
+      - "Recycle Bin"
+    win11:
+      - "Google Chrome"
+      - "d3manager"
+      - "File Explorer"
+      - "Recycle Bin"
+    DELTACAST:
+      - "dCare"
+      - "dScope"
 
 devices_settings:
   deltacast_apps:

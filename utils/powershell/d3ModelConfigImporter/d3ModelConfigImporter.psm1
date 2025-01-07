@@ -1,3 +1,6 @@
+$d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
+Import-Module $d3OSQAUtilsPath -Force
+
 # This module is made to aid with importing disguisePower model configs into python
 # Additionally there will be a function to import any module from sec or power, given a switch
 
@@ -45,11 +48,6 @@ function Import-OSValidationTemplate{
     $object = . $PathToTemplateFile
     return $object
 
-}
-
-function Import-OSValidatonConfig{
-    $config = Get-Content -Path ".\config\OSvalidationConfig.JSON" | ConvertFrom-Json
-    return $config
 }
 
 # This should be called from anythin INSIDE the powershell folder

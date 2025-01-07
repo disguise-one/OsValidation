@@ -1,4 +1,11 @@
 # Implement your module commands in this script.
+try{
+    Import-Module powershell-yaml -ErrorAction Stop
+}catch{
+    Install-Module powershell-yaml
+    Import-Module powershell-yaml
+}
+
 
 function Get-PrintScreenandRetryIfFailed{
     param(
@@ -96,7 +103,29 @@ function Format-ResultsOutput{
     }
 }
 
+#Function to tell if we're on windows 10 or windows 11
+function Get-WindowsVersionInfo {
+    [version]$OSVersion = [Environment]::OSVersion.Version
 
+    return @{
+        MicrosoftVersioningMajorNumber = $OSVersion.Major
+        MicrosoftVersioningMinorNumber = $OSVersion.Minor
+        MicrosoftVersioninBuildNumber = $OSVersion.Build
+        WindowsVersion = if( $OSVersion.Major -eq 10 -and $OSVersion.Build -ge 22000 ) { 11 } else { $OSVersion.Major } 
+    }
+}
+
+function Get-ConfigYAMLAsPSObject {
+    $configYAMLPath = Join-Path $PSScriptRoot "..\..\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
+    return $testConfig
+}
+
+function Import-OSValidatonConfig{
+    $OSOalidationConfigJSONPath = Join-Path $PSScriptRoot "..\..\..\config\OSvalidationConfig.json"
+    $config = Get-Content -Path $OSOalidationConfigJSONPath | ConvertFrom-Json
+    return $config
+}
 
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.

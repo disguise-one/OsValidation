@@ -123,7 +123,7 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             logging.info("Creating New Test Run in TestRail")
             runRequrestResponse = client.send_post(runAPIString, {
             "suite_id": suite_id,
-            "name": str(TestRunTitle + "_TESTING_NOT_REAL_RESULTS"),
+            "name": str(TestRunTitle),
             # "description": description,
             "include_all": True,
             })

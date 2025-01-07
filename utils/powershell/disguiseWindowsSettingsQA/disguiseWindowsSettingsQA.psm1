@@ -15,7 +15,6 @@ Import-Module $d3OSQAUtilsPath -Force
 
 $computerName = $env:computername -replace "-.*"
 
-
 <#
 .Description
 This is a testing function that will get the windows taskbar contents
@@ -76,22 +75,27 @@ function Get-AndTestWindowsStartMenuContents{
     # It depends on if the machien is windows 10 or 11, on windows 10 it will be an xml. On windows 11 its a JSON file
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
     # Check it doesnt exist
-    $LayoutPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\temp"
+    $LayoutPath = $env:TEMP 
     if(-not (Test-Path $LayoutPath)){
         # Strip off the name of the directory being made
-        $LayoutPath = $LayoutPath.Substring(0,$LayoutPath.LastIndexOf("\temp"))
+        $LayoutParentPath = $LayoutPath.Substring(0,$LayoutPath.LastIndexOf("\Temp"))
         # Make the directory
-        New-Item -path $LayoutPath -Name "temp" -ItemType "directory" | Out-Null
+        New-Item -path $LayoutParentPath -Name "Temp" -ItemType "directory" | Out-Null
     }
 
-    # If the XML exists we want to delete it and overwrite it
-    $winodwsVersion = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").ProductName
-    if($winodwsVersion -match "11"){
+    #Get windows version and set $LayoutPath to json / xml file accordingly
+
+    $windowsVersionInfoObject = Get-WindowsVersionInfo
+    if( $windowsVersionInfoObject.WindowsVersion -eq 11 ){
         $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.json"
-    }elseif($winodwsVersion -match "10"){
+    }elseif( $windowsVersionInfoObject.WindowsVersion -eq 10 ){
         $LayoutPath = Join-Path -Path $LayoutPath -ChildPath "\StartMenuLayout.xml"
     }
+    else {
+        throw "Unsupported Windows Version: $($windowsVersionInfoObject.WindowsVersion)"
+    }
     
+    # If the previous XML exists from the last test run we want to delete it before we overwrite it
     if(Test-Path -path $LayoutPath){
         Remove-item -path $LayoutPath -Force | Out-Null
     }
@@ -100,7 +104,7 @@ function Get-AndTestWindowsStartMenuContents{
     try{
         Export-StartLayout -Path $LayoutPath
     }catch{
-        Remove-item -path $LayoutPath -Force
+        Remove-item -Path $LayoutPath -Force
         Export-StartLayout -Path $LayoutPath
     }
 
@@ -109,20 +113,30 @@ function Get-AndTestWindowsStartMenuContents{
     $LayoutContent = Get-Content -Path $LayoutPath
     # Oh wait, the format of the MICROSOFT provided XML is incompatable with the MICROSOFT powershell's XML parser. Nice!
     # So we're going to have to just parse the text using a regex
-    if($winodwsVersion -match "11"){
+    if(  $windowsVersionInfoObject.WindowsVersion -eq 11 ){
         $StartMenuApps = [regex]::Matches($LayoutContent, "\\\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
-    }elseif($winodwsVersion -match "10"){
+    }elseif(  $windowsVersionInfoObject.WindowsVersion -eq 10  ){
         $StartMenuApps = [regex]::Matches($LayoutContent, "\\(\w|\s)*.lnk").Value.Replace("\\","").Replace(".lnk","")
     }
-    
+    else {
+        throw "Unsupported Windows Version: $($windowsVersionInfoObject.WindowsVersion)"
+    }
 
     # Check if default apps are in there
     # Get the contents of the config file
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
-    $defaultStartMenuApps = $testConfig.Windows_settings.start_menu_apps_default
+    $testConfig = Get-ConfigYAMLAsPSObject
+    $defaultStartMenuApps = $testConfig.Windows_settings.start_menu_apps_default.( "win$($windowsVersionInfoObject.WindowsVersion)" )
 
+    #SEE IF WE NEED TO ADD ANY MODEL SPECIFIC APPS TO THE LIST
+    $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
+    foreach( $captureCardType in [string[]]$modelConfig.AllowedCaptureCardTypes ) {
+        if( $testConfig.Windows_settings.start_menu_apps_default.( $captureCardType ) ) {
+            [string[]]$defaultStartMenuApps += [string[]]$testConfig.Windows_settings.start_menu_apps_default.( $captureCardType )
+        }
+    }
+
+    #Now See which ones are missing
     $missingApps = @()
-
     foreach($TestApp in $defaultStartMenuApps){
         if(-not ($StartMenuApps -match $TestApp)){
             $missingApps += $TestApp
@@ -133,12 +147,12 @@ function Get-AndTestWindowsStartMenuContents{
     # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
     # not checked for
 
+    $successFeedbackVerb = if( $windowsVersionInfoObject.WindowsVersion -eq 10 ) { 'Found' } else { 'Pinned' }
     if($missingApps){
-        return Format-ResultsOutput -Result "FAILED" -Message "Missing Start Menu Apps: $($missingApps)"
+        return Format-ResultsOutput -Result "FAILED" -Message "Missing Apps not $( $successFeedbackVerb ) in Windows $( $windowsVersionInfoObject.WindowsVersion ) Start menu: [$($missingApps -join ', ')]"
     }else{
-        return Format-ResultsOutput -Result "PASSED" -Message "No Missing Apps" -pathToImageArr $pathToImageStore
+        return Format-ResultsOutput -Result "PASSED" -Message "All Default Apps $( $successFeedbackVerb ) in Windows $( $windowsVersionInfoObject.WindowsVersion ) Start menu: [$( $defaultStartMenuApps -join ', ' )]" -pathToImageArr $pathToImageStore
     }
-
 }
 
 
