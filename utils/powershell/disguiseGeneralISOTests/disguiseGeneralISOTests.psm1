@@ -55,14 +55,58 @@ function Test-ProjectsRegPath{
     return Format-ResultsOutput -Result "$overallResult" -Message "$($returnString)"
 }
 
-function Test-ReImageLogs{
+function Test-RemoteReImageLogs {
     param(
+        [Parameter(Mandatory=$true)]
+        [String]$TestType,
+        [Parameter(Mandatory=$true)]
+        [String]$AfterInternalRestore
     )
-    # needs to be both postboot and upgrade
 
-    $path = "C:\Windows\Logs"
-    $postbootRegex = "(^PS(\d+)_POSTBOOT.*\.txt$)"
-    $upgradeRegex = "(^PS((\d+)|(_UnknownSerial))_UPGRADE.*\.txt$)"
+    $AfterInternalRestore_bool = [bool]( $AfterInternalRestore -eq 'True' )
+    if( $AfterInternalRestore_bool ) {
+        return Format-ResultsOutput -Result "PASSED" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
+    }
+    else {
+        if( $TestType -eq "USB" ) {
+            $USBName = 'REDISGUISE'
+            #Find USB Drive called REDISGUISE
+            $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $USBName }
+            #We want Redisguises to work from External SSDs as well as External USB Drives now as External SSD UBS Sticks are becoming more and more popular
+            if( -not $USBVolumeObject ) {
+                #This is the powershell to get all USB SSD DRIVES, then check through all their Partitions for Mounted Drive Letters then Check through each of them for the Volume Label 'REDISGUISE', then add the 'label' field to these volume objects so they match the spec below
+                $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $USBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
+            }
+            if( -not $USBVolumeObject ) {
+                return Format-ResultsOutput -Result "BLOCKED" -Message "No USB Drive called [REDISGUISE] Could be found, please plug in your USB and try again!"
+            }
+            elseif( ([string[]]$USBVolumeObject.DriveLetter).Length -gt 1 ) {
+                return Format-ResultsOutput -Result "BLOCKED" -Message "A total of $( ([string[]]$USBVolumeObject.DriveLetter).Length ) USB Drives called [REDISGUISE] Could be found, please unplug the extra USB(s) and try again!"
+            }
+            else {
+                $USBDriveRootPath = "$( $USBVolumeObject.DriveLetter )".Trim( '\' ).Trim( '/' ).Trim( ':' )
+                $USBDriveRootPath = $USBDriveRootPath + ":\"
+                return Test-ReImageLogs -LoggingDirectory $USBDriveRootPath
+            }
+        }
+        elseif( $TestType -eq "R20" ) {
+            return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
+        }
+        else {
+            return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: Unknown Test Type: [$( $TestType )]"
+        }
+    }
+}
+
+function Test-ReImageLogs {
+    param(
+        [Parameter(Mandatory=$false)]
+        [String]$LoggingDirectory="C:\Windows\Logs"
+    )
+    # needs to be both postboot and upgrade/deploy logs found
+    $postbootRegex = "^PS(\d+)_POSTBOOT_.*\.txt$"
+    $upgradeRegex = "^PS(\d+|_UnknownSerial)_UPGRADE_.*\.txt$"
+    $deployRegex = "^PS(\d+|_UnknownSerial)_DEPLOY_.*\.txt$"
 
     $codeMeterPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
 
@@ -75,32 +119,71 @@ function Test-ReImageLogs{
     if($CMINFO.d3serial){
         $postbootRegex = $postbootRegex -replace "\d+", $CMINFO.d3serial
         $upgradeRegex = $upgradeRegex -replace "\d+", $CMINFO.d3serial
+        $deployRegex = $deployRegex -replace "\d+", $CMINFO.d3serial
     }
 
-    $logDirectoryContents = Get-ChildItem -Path $path
-    $postbootAppears = $logDirectoryContents | Where-Object -Property FullName -EQ $postbootRegex
-    $upgradeAppears = $logDirectoryContents | Where-Object -Property FullName -EQ $upgradeRegex
+    #find all UPGRADE/DEPLOY/POSTBOOT Logs
+    $logDirectoryContents = Get-ChildItem -Path $LoggingDirectory
+    $postbootLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $postbootRegex }
+    $upgradeLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $upgradeRegex }
+    $deployLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $deployRegex }
 
-    if($postbootAppears){
-        $postbootTest = "PASSED"
-        $postbootMessage = "Postboot log found."
+    [string[]]$pathToLogFileStore_Array = [string[]]@()
+
+    if($postbootLogFileNames){
+        $noOfPostbootLogsFound = ([string[]]$postbootLogFileNames.Name).Length
+        if( $noOfPostbootLogsFound -eq 1 ) {
+            $postbootTest = "PASSED"
+            $postbootMessage = "Postboot log found [$($postbootLogFileNames.FullName)]"
+            [string[]]$pathToLogFileStore_Array += [string]($postbootLogFileNames.FullName)
+        }
+        else {
+            $postbootTest = "BLOCKED"
+            $postbootMessage = "A TOTAL OF $($noOfPostbootLogsFound) POSTBOOT logs were found [$( $postbootLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
+        }
     }else{
         $postbootTest = "FAILED"
-        $postbootMessage = "Cannot find any files matching the regex [$($postbootRegex)]. This indicates no postboot logs have been made. Please check manually to verify, and if this test has produced a false-negative, please update the code of this test."
+        $postbootMessage = "Cannot find any files matching the regex [$($postbootRegex)] in directory [$($LoggingDirectory)]. This indicates no POSTBOOT logs have been made. Please check manually to verify"
     }
 
-    if($upgradeAppears){
-        $upgradeTest = "PASSED"
-        $upgradeMessage = "Upgrade log found."
-    }else{
-        $upgradeTest = "FAILED"
-        $upgradeMessage = "Cannot find any files matching the regex [$($upgradeRegex)]. This indicates no upgrade logs have been made. Please check manually to verify, and if this test has produced a false-negative, please update the code of this test."
+    if($upgradeLogFileNames){
+        $noOfUpgradeLogsFound = ([string[]]$upgradeLogFileNames.Name).Length
+        if( $noOfUpgradeLogsFound -eq 1 ) {
+            $reimageTest = "PASSED"
+            $reimageMessage = "Upgrade Log File found [$($upgradeLogFileNames.FullName)]"
+            [string[]]$pathToLogFileStore_Array += [string]($upgradeLogFileNames.FullName)
+        }
+        else {
+            $reimageTest = "BLOCKED"
+            $reimageMessage = "A TOTAL OF $($noOfUpgradeLogsFound) UPGRADE logs were found [$( $upgradeLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
+        }
+    }
+    elseif($deployLogFileNames){
+        $noOfDeployLogsFound = ([string[]]$deployLogFileNames.Name).Length
+        if( $noOfDeployLogsFound -eq 1 ) {
+            $reimageTest = "PASSED"
+            $reimageMessage = "Deployment Log File found [$($deployLogFileNames.FullName)]"
+            [string[]]$pathToLogFileStore_Array += [string]($deployLogFileNames.FullName)
+        }
+        else {
+            $reimageTest = "BLOCKED"
+            $reimageMessage = "A TOTAL OF $($noOfDeployLogsFound) DEPLOY logs were found [$( $deployLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
+        }
+    }
+    else{
+        $reimageTest = "FAILED"
+        $reimageMessage = "Cannot find any files matching either regex [$($upgradeRegex)] or [$($deployRegex)] in directory [$($LoggingDirectory)]. This indicates no upgrade or deployment logs have been made. Please check manually to verify."
     }
 
-    if(($upgradeTest -eq "PASSED") -and ($postbootTest -eq "PASSED")){
-        return Format-ResultsOutput -Result "PASSED" -Message "Postboot Message: $($postbootTest): $($postbootMessage) `n`nUpgrade Message: $($upgradeTest): $($upgradeMessage)"
-    }else{
-        return Format-ResultsOutput -Result "FAILED" -Message "Postboot Message: $($postbootTest): $($postbootMessage) `n`nUpgrade Message: $($upgradeTest): $($upgradeMessage)"
+    $feedbackMessage = "POSTBOOT Results: $($postbootTest): $($postbootMessage)`n`nREIMAGE Results: $($reimageTest): $($reimageMessage)"
+    if(($reimageTest -eq "PASSED") -and ($postbootTest -eq "PASSED")){
+        return Format-ResultsOutput -Result "PASSED" -Message "$( $feedbackMessage )`n`nSEE LOG FILES ATTACHED BELOW:" -pathToImageArr $pathToLogFileStore_Array
+    }
+    elseif( ( $reimageTest -eq "FAILED" ) -or ( $postbootTest -eq "FAILED" ) ) {
+        return Format-ResultsOutput -Result "FAILED" -Message $feedbackMessage -pathToImageArr $pathToLogFileStore_Array
+    }
+    else {
+        return Format-ResultsOutput -Result "BLOCKED" -Message $feedbackMessage -pathToImageArr $pathToLogFileStore_Array
     }
 
 }

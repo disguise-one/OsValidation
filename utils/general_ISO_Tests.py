@@ -7,9 +7,14 @@ def check_projects_reg_paths(OSValidationDict):
     registryPathTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754268", "RenderStream - Check registry path is correct")
     return registryPathTestCase
 
-def check_logs_present(OSValidationDict):
+def check_logs_present_local(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-ReImageLogs"
-    registryPathTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754271", "Reimage Logs")
+    registryPathTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754271", "Local Reimage Logs (C:\Windows\Logs)")
+    return registryPathTestCase
+
+def check_logs_present_remote(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-RemoteReImageLogs -TestType \"" + OSValidationDict["TestType"] + "\" -AfterInternalrestore \"" + str( OSValidationDict["AfterInternalRestore"] ) + "\""
+    registryPathTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "767414", "Remote Reimage Logs (Root of USB or DeploymentShare\Logs)")
     return registryPathTestCase
 
 def check_net_adapter_names(OSValidationDict):

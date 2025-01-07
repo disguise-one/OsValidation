@@ -43,7 +43,7 @@ def run_validation_group(validation_functions, group_name, OSValidationDict, run
         
 
 
-def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType):
+def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType, afterInternalRestore):
     """
     Main function to orchestrate various validation checks.
 
@@ -75,7 +75,9 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
     logging.info("Creating Parameter Dictionary")
     OSValidationDict = {
         "TestRunTitle": TestRunTitle,
-        "OSValidationTemplatePath" : OSValidationTemplatePath
+        "OSValidationTemplatePath" : OSValidationTemplatePath,
+        "TestType" : TestType,
+        "AfterInternalRestore" : afterInternalRestore
     }
 
     # ===================== Interacting with Testrail API ===================== #
@@ -170,7 +172,8 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
         general_iso_functions = [
             general_ISO_Tests.check_projects_reg_paths,
             general_ISO_Tests.check_machine_name,
-            general_ISO_Tests.check_logs_present,
+            general_ISO_Tests.check_logs_present_local,
+            general_ISO_Tests.check_logs_present_remote,
             general_ISO_Tests.check_net_adapter_names,
             general_ISO_Tests.check_audio_cards,
             general_ISO_Tests.check_D_drive
@@ -273,7 +276,7 @@ if __name__ == "__main__":
     
     logging.info("Starting logs...")
     logging.info("Success Importing Modules.")
-    NumberOfArgsExludingExeName = 6
+    NumberOfArgsExludingExeName = 7
     needToExit = False
 
     try:
@@ -289,7 +292,7 @@ if __name__ == "__main__":
             input("Press enter to exit...")
             exit()
 
-        testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType = sys.argv[1:NumberOfArgsExludingExeName + 1]
+        testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType, afterInternalRestore_string = sys.argv[1:NumberOfArgsExludingExeName + 1]
 
         try:
             testRun = int(testRun)
@@ -305,12 +308,19 @@ if __name__ == "__main__":
             input("\n\n Press enter to exit...")
             exit()
 
+        try:
+            afterInternalRestore = ( afterInternalRestore_string == 'True' )
+        except Exception as error:
+            logging.error("Cannot decode [afterInternalRestore]. Execption: " + str(error))
+            input("\n\n Press enter to exit...")
+            exit()
+
         # NEEDS SOME LOVE \/
-        if((testRun or testRunTitle or testrailUsername or testrailPassword) == ""):
-            logging.error("All 5 arguments must be passed in. Exiting script")
+        if((testRun or testRunTitle or testrailUsername or testrailPassword or afterInternalRestore_string) == ""):
+            logging.error("All 6 arguments must be passed in. Exiting script")
             input("Press Enter to continue...")
             exit()
-        
+
         logging.info("Success.\n")
     
     except Exception as error:
@@ -334,7 +344,7 @@ if __name__ == "__main__":
     logging.info(f"Test Type detected as: [{TestType}]")
 
     try:
-        main(testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType)
+        main(testRun, testRunTitle, testrailUsername, testrailPassword, OSValidationTemplatePath, TestType, afterInternalRestore )
     except Exception as error:
         logging.error("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")
