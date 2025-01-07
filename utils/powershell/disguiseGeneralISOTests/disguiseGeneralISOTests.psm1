@@ -78,10 +78,10 @@ function Test-RemoteReImageLogs {
                 $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $USBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
             }
             if( -not $USBVolumeObject ) {
-                return Format-ResultsOutput -Result "BLOCKED" -Message "No USB Drive called [REDISGUISE] Could be found, please plug in your USB and try again!"
+                return Format-ResultsOutput -Result "FAILED" -Message "No USB Drive called [REDISGUISE] Could be found, please plug in your USB and try again!"
             }
             elseif( ([string[]]$USBVolumeObject.DriveLetter).Length -gt 1 ) {
-                return Format-ResultsOutput -Result "BLOCKED" -Message "A total of $( ([string[]]$USBVolumeObject.DriveLetter).Length ) USB Drives called [REDISGUISE] Could be found, please unplug the extra USB(s) and try again!"
+                return Format-ResultsOutput -Result "FAILED" -Message "A total of $( ([string[]]$USBVolumeObject.DriveLetter).Length ) USB Drives called [REDISGUISE] Could be found, please unplug the extra USB(s) and try again!"
             }
             else {
                 $USBDriveRootPath = "$( $USBVolumeObject.DriveLetter )".Trim( '\' ).Trim( '/' ).Trim( ':' )
@@ -93,7 +93,7 @@ function Test-RemoteReImageLogs {
             return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
         }
         else {
-            return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: Unknown Test Type: [$( $TestType )]"
+            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $TestType )]"
         }
     }
 }
