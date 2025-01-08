@@ -126,3 +126,6 @@ devices_settings:
 
   bluefish_apps:
     - "blueinfo"
+
+driver_choco_package_handle_automated_device_manager_version_test_blocklist: #can put choco package handles here or shared package changes (pref shared if it exists)
+    - "ftdi" #Just added an an example, we may remove this

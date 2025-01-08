@@ -28,4 +28,7 @@ def check_audio_cards(OSValidationDict):
     audioCardTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "374749", "Audio devices - Driver Version Check")
     return audioCardTestCase
 
+def check_device_manager_driver_versions(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-DeviceManagerDriverVersions -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "374755", "Driver Validation via Device Manager")
 

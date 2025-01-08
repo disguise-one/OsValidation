@@ -65,7 +65,7 @@ function Test-RemoteReImageLogs {
 
     $AfterInternalRestore_bool = [bool]( $AfterInternalRestore -eq 'True' )
     if( $AfterInternalRestore_bool ) {
-        return Format-ResultsOutput -Result "PASSED" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
     }
     else {
         if( $TestType -eq "USB" ) {

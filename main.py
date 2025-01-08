@@ -164,7 +164,8 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             device_testing.check_matrox_capture_cards,
             device_testing.check_deltacast_capture_cards,
             device_testing.check_bluefish_capture_cards,
-            device_testing.check_audio_cards
+            device_testing.check_audio_cards,
+            device_testing.check_device_manager_driver_versions
         ]
         failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 

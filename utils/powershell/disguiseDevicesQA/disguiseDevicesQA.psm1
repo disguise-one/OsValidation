@@ -233,7 +233,178 @@ Function Test-AudioCard{
     return Format-ResultsOutput -Result "$testValue" -Message "$($returnString)"
 }
 
+Function Test-DeviceManagerDriverVersions {
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$TestRunTitle,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
+    )
 
+    # Dot-Source the ps1 file into a powershell object variable
+    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    if( -not $OSValidationTemplatePSObject ) {
+        Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+    }
+
+    # Get Config YAML as PS Object
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    $testrailFeedbacktext = "----------------------------------------------------------------------------------"
+
+    # Check for '01-Drivers' choco packages with missing Hardware IDs and add a warning to the test feedback string
+    [string[]]$packageHandlesToIgnore = $configYAMLPSObject.driver_choco_package_handle_automated_device_manager_version_test_blocklist
+    $driverPackagesWithMissingHardwareIDs = $OSValidationTemplatePSObject.PackageVersions | Where-Object {
+                                                $_.category -like '*Driver*' -and
+                                                -not ( [string]($_.chocoPackageHandle  ) -in [string[]]$packageHandlesToIgnore ) -and
+                                                -not ( [string]($_.sharedPackageHandle ) -in [string[]]$packageHandlesToIgnore ) -and
+                                                -not ( $_.HardwareComponentHardwareIDs )
+                                            }
+
+    #Add a warning to the feedback if some of the chocolatey packages dont have any hardware components associated with any HardwareIDs
+    if( $driverPackagesWithMissingHardwareIDs ) {
+        $testrailFeedbacktext += "`n`n** TEST BLOCKED **`nTHE FOLLOWING CHOCO PACKAGES DO NOT HAVE HARDWARE IDs ASSOCIATED WITH THEM FOR THIS OS.`nPlease either:`n - Add this machine's Hardware ID(s) to the relevant Hardware Components in OSBuilder`n - Or add either the Package Handle or Shared External Handle to the blocklist in the OSValidation Config File [OSValidation\config\config.yaml]`n`n"
+        $testrailFeedbacktext += ( $driverPackagesWithMissingHardwareIDs | 
+                                   Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                                                 @{Name='Package Handle'; Expression='chocoPackageHandle'}, 
+                                                 @{Name='Shared External Handle'; Expression='sharedPackageHandle'}, 
+                                                 @{Name='Expected Version'; Expression='osValidationPackageVersion'} |
+                                    Format-Table | Out-String 
+                                 ).Trim()
+        $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    }
+
+    # Now fetch all choco packages with HardwareIDs attached, that arent in the blocklist
+    $allPackagesWithHardwareIDs = $OSValidationTemplatePSObject.PackageVersions | Where-Object {
+        -not ( [string]($_.chocoPackageHandle  ) -in [string[]]$packageHandlesToIgnore ) -and
+        -not ( [string]($_.sharedPackageHandle ) -in [string[]]$packageHandlesToIgnore ) -and
+        ( $_.HardwareComponentHardwareIDs )
+    }
+
+    # Get a list of all devices in Device Manager
+    [CimInstance[]]$deviceManagerDevicePSObjects = Get-PNPDevice
+
+    # Loop through all non-blocklisted choco packages with HardwareIDs attached, so that we can search for them in device manager
+    foreach( $packageObject in [PSCustomObject[]]$allPackagesWithHardwareIDs ) {
+
+        #Get Sanitised list of Hardware IDs for this Package and add the number of possible hardwareids to the package object in case we want to report on it later
+        [string[]]$thisPackagesPossibleHardwareIDs = $packageObject.HardwareComponentHardwareIDs | Where-Object { [bool]( ([string]$_).Trim() ) } | Select-Object -Unique #Remove Blanks and De-Duplicate the list just in case
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfPossibleHardwareIDs' -Value $thisPackagesPossibleHardwareIDs.Length
+        
+        #Get list of PNPDevices whose InstanceIDs begin with at least one of the hardwareIDs
+        $matchingPNPDevices = [CimInstance[]]@()
+        foreach( $hardwareID in [string[]]$thisPackagesPossibleHardwareIDs ) {
+            [CimInstance[]]$matchingPNPDevices += [CimInstance[]]( $deviceManagerDevicePSObjects | Where-Object { $_.InstanceID -like "$( $hardwareID )*"  } )
+        }
+        # Now Deduplicate the list of matching devices
+        [CimInstance[]]$matchingPNPDevices = [CimInstance[]]$matchingPNPDevices | Sort-Object  -Unique
+
+        # add the number of found devices to the package object in case we want to report on it later (also the device name if only one matched)
+        # DEBUG: Write-Host "Matching Devices: $($matchingPNPDevices.Length)"
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundDevices' -Value $matchingPNPDevices.Length
+        $matchedDeviceDescription = "None"
+        if( $matchingPNPDevices.Length -eq 1 ) {
+            $matchedDeviceDescription = $matchingPNPDevices[0].FriendlyName
+        }
+        if( $matchingPNPDevices.Length -gt 1 ) {
+            $matchedDeviceDescription = "MULTIPLE DEVICES"
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'foundDeviceName' -Value $matchedDeviceDescription
+        $packageObject | Add-Member -Type NoteProperty -Name 'allFoundDeviceNames' -Value "[$( ( [string[]]$matchingPNPDevices.FriendlyName ) -join '], [' )]"
+        
+        #Now look through all the matching devices for ones with drivers, where the driver has a matching version
+        $allDriverVersions = ( ( $matchingPNPDevices | Get-CimAssociatedInstance -ResultClassName Win32_SystemDriver -ErrorAction SilentlyContinue ).PathName | Get-Item -ErrorAction SilentlyContinue ).VersionInfo.ProductVersion
+        # Now Deduplicate the list of matching devices
+        [string[]]$allDriverVersions = [string[]]$allDriverVersions | Sort-Object  -Unique        
+        
+        # Add the number of found Driver Versions to the package object in case we want to report on it later (also the device name if only one matched)
+        # DEBUG: Write-Host "Found Driver Versions: $($allDriverVersions.Length)"
+        # DEBUG: Write-Host "All Driver Versions for these Devices: [$( $allDriverVersions -join '], [' )]"
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundDriverVersions' -Value $allDriverVersions.Length
+        $matchedDriverVersion = "None"
+        if( ([string[]]$allDriverVersions).Length -eq 1 ) {
+            $matchedDriverVersion = ([string[]]$allDriverVersions)[0]
+        }
+        if( ([string[]]$allDriverVersions).Length -gt 1 ) {
+            $matchedDriverVersion = "MULTIPLE VERSIONS"
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'foundDriverVersion' -Value $matchedDriverVersion
+        $packageObject | Add-Member -Type NoteProperty -Name 'allFoundDriverVersions' -Value "[$( $allDriverVersions -join '], [' )]"
+
+        # Is the correct driver version installed? ie Is at least one Driver Version for at least one matching Device exactly the same as osValidationPackageVersion fromt he OSValidationTemplate.ps1 choco package object
+        $finalReuslt = if( [string]$packageObject.osValidationPackageVersion -in [string[]]$allDriverVersions ) { 'PASS' } else { 'FAIL' }
+        if( $matchingPNPDevices.Length -eq 0 ) {
+            #if its a fail because we couldnt find any devices matching the HardwareIds the set this record to BLOCKED instead of pass or fail because it means the user needs to add a hardware id to OS Builder
+            $finalReuslt = 'BLOCKED'
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'result' -Value $finalReuslt
+    }
+
+    #Now that we have completed searching for all matching devices and driver versions, we can calculate the final result
+    $overallResult = 'PASSED'
+    if( [string[]]$allPackagesWithHardwareIDs.result -contains 'FAIL' ) {
+        $overallResult = 'FAILED'
+    }
+    elseif( $driverPackagesWithMissingHardwareIDs -or ( [string[]]$allPackagesWithHardwareIDs.result -contains 'BLOCKED' ) ) {
+        $overallResult = 'BLOCKED'
+    }
+
+    #Add the overall results table to the testrail resposne text
+    $testrailFeedbacktext += "`n`nFINAL RESULTS TABLE:`n`n"
+    $testrailFeedbacktext += ( $allPackagesWithHardwareIDs | 
+                               Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                                             @{Name='Found Device on this Machine'; Expression='foundDeviceName'}, 
+                                             @{Name='Expected Version'; Expression='osValidationPackageVersion'},
+                                             @{Name='Found Version'; Expression='foundDriverVersion'}, 
+                                             @{Name='Result'; Expression='result'} |
+                               Format-Table | Out-String 
+                             ).Trim()
+    $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+
+    #if some of the tests came back blocked then the user needs to add some hardware ids to OSBuilder
+    [PSCustomObject[]]$blockedTests = ( $allPackagesWithHardwareIDs | Where-Object { $_.result -eq 'BLOCKED' } )
+    if( $blockedTests ) {
+        #Add the overall results table to the testrail resposne text
+        $testrailFeedbacktext += "`n`nNO DEVICES COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nPlease add the HardwareID of the Appropriate Device on this machine to the appropriate Hardware Component in OSBuilder then try again.`n`n"
+        foreach( $blockedTest in $blockedTests ) {
+            $testrailFeedbacktext += "Choco Package         : $( $blockedTest.friendlyName )`n"
+            $hardwareIDPrefix =      "Possible Hardware IDs : "
+            $blockedTest.HardwareComponentHardwareIDs | Foreach-Object {
+                $testrailFeedbacktext += "$( $hardwareIDPrefix )[$( $_ )]`n"
+                $hardwareIDPrefix =  "                        "
+            }
+            $testrailFeedbacktext += "`n"
+        }
+        $testrailFeedbacktext += "`n----------------------------------------------------------------------------------"
+    }
+
+    #Add the overall results table to the testrail resposne text
+    $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST THAT FAILED:`n`n"
+    $testrailFeedbacktext += ( $allPackagesWithHardwareIDs | Where-Object { $_.result -eq 'FAIL' } | 
+                               Select-Object @{Name='Package Category'; Expression='category'},
+                                             @{Name='Package Name'; Expression='friendlyName'},
+                                             @{Name='Package Handle'; Expression='chocoPackageHandle'},
+                                             @{Name='Shared External Handle'; Expression='sharedPackageHandle'},
+                                             @{Name='Version Choco Handle'; Expression='chocoPackageVersion'},
+                                             @{Name='Version Public Name'; Expression='publicPackageVersion'},
+                                             @{Name='Version Expected in Device Namager'; Expression='osValidationPackageVersion'},
+                                             @{Name='Possible HardwareIDs'; Expression='HardwareComponentHardwareIDs'},
+                                             @{Name='# of Found Devices'; Expression='noOfFoundDevices'},
+                                             @{Name='Found Device Name'; Expression='foundDeviceName'}, 
+                                             @{Name='All Found Device Names'; Expression='allFoundDeviceNames'}, 
+                                             @{Name='# of Found Versions'; Expression='foundDriverVersion'},
+                                             @{Name='Found Version Name'; Expression='foundDeviceName'}, 
+                                             @{Name='All Found Version Names'; Expression='allFoundDriverVersions'}, 
+                                             @{Name='Result'; Expression='result'} |
+                               Format-List * | Out-String 
+                             ).Trim()
+    $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+
+    #dust for debugging, doent get printed during normal execution
+    Write-Verbose $testrailFeedbacktext
+
+    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext
+}
 
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
