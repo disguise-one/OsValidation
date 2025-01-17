@@ -76,41 +76,6 @@ function Format-disguiseModulePathForImport{
     }
     
     return $modulePath
-    
-}
-
-Function Import-Yaml{
-    param(        
-        [Parameter(Mandatory=$false)]
-        [String]$configYamlPath = ".\config\config.yaml"
-    )
-
-    if (-not(test-path $configYamlPath)){
-        Write-Error "No file found in [$($configYamlPath)]. Is it supposed to be there? Make sure it is there and try again."
-        return $null
-    }
-
-    try{
-        import-module powershell-yaml -Force
-    }catch{
-        Install-Module -Name powershell-yaml -SkipPublisherCheck -Force
-        try{
-            import-module powershell-yaml -Force
-        }catch{
-            Write-Error "Install of [powershell-yaml] seems to have failed. Please run 'Install-Module -Name powershell-yaml -SkipPublisherCheck -Force' by hand and then run again"
-        }
-        
-    }
-
-    try{
-        $configYaml = Get-Content -Path $configYamlPath | ConvertFrom-Yaml
-    }catch{
-        Write-Error "Canot parse file in [$($configYamlPath)]. Is it valid Yaml?"
-        return $null
-    }
-    
-    return $configYaml
-
 }
 
 # Export only the functions using PowerShell standard verb-noun naming.

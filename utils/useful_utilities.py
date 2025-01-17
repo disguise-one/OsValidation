@@ -71,6 +71,12 @@ def uploadTestBatchToTestRail(testBatch, runRequrestResponse, client):
             retries = 3
             while True:
                 result = None
+
+                #If testcase is blanbk there was an error running this test, so just skip
+                if( not ( testcase ) ):
+                    failedUploads.append(str("\n\tTest Name:\t\tUNKNOWN\n\tResult:\t\ttUNKNOWN. \n\tMessage:\ttUNKNOWN"))
+                    break
+
                 print(testcase.formatSendingResultsMessage())
                 try:
                     result = client.send_post('add_result_for_case/' + str(urllib.parse.quote_plus(str(runRequrestResponse['id']))) + '/' + str(urllib.parse.quote_plus(str(testcase.get_testCode()))), {
@@ -95,7 +101,7 @@ def uploadTestBatchToTestRail(testBatch, runRequrestResponse, client):
                         break
             
             # Now we upload any images if they have been set
-            if(testcase.get_testImagePathArr()):
+            if( testcase and testcase.get_testImagePathArr()):
                 print("Image upload in progress...")
                 # we need to get the resultID To be able to upload an image to it
                 results = client.send_get(f"get_results_for_case/{str(urllib.parse.quote_plus(str(runRequrestResponse['id'])))}/{str(urllib.parse.quote_plus(str(testcase.get_testCode())))}")

@@ -1,12 +1,3 @@
-# Implement your module commands in this script.
-
-# If the below module doesnt work, run Install-Module powershell-yaml on ps command line
-try{
-    Import-Module powershell-yaml -ErrorAction Stop
-}catch{
-    Install-Module powershell-yaml
-    Import-Module powershell-yaml
-}
 
 $d3ModelConfigPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3ModelConfigImporter"
 $d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
@@ -324,7 +315,7 @@ function Test-ChromeHistory{
 
     # Test if it exists
     # See if it isnt a disguise website
-    $whitelistedHistoryPages = (Import-Yaml).Windows_settings.chrome_allowed_history
+    $whitelistedHistoryPages = (Get-ConfigYAMLAsPSObject).Windows_settings.chrome_allowed_history
     $nonWhiteListedPages = @()
     foreach($site in $history.data){
         foreach($whitelistedSite in $whitelistedHistoryPages){
@@ -591,6 +582,168 @@ function Test-NotificationsDisabled{
         return Format-ResultsOutput -Result "BLOCKED" -Message "Something strange went on. You should never have hit this message. Please check what is in [HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications] and check [OsValidation\utils\disguiseWindowsSettingsQA.ps1]'s function [Test-NotificationsDisabled] is behaving."
     }
 }
+
+
+Function Test-InstalledAppAndFeatureVersions {
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$TestRunTitle,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
+    )
+
+    # Dot-Source the ps1 file into a powershell object variable
+    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    if( -not $OSValidationTemplatePSObject ) {
+        Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+    }
+
+    # Get Config YAML as PS Object
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    $testrailFeedbacktext = "----------------------------------------------------------------------------------"
+
+    # Check for '01-Drivers' choco packages with missing Hardware IDs and add a warning to the test feedback string
+    [string[]]$packageHandlesToIgnore = $configYAMLPSObject.driver_choco_package_handle_automated_installed_apps_and_features_version_test_blocklist
+    $driverPackagesWithMissingInstalledAppOrFeatureName = $OSValidationTemplatePSObject.PackageVersions | Where-Object {
+                                                $_.category -like '*Software*' -and
+                                                -not ( [string]($_.chocoPackageHandle  ) -in [string[]]$packageHandlesToIgnore ) -and
+                                                -not ( [string]($_.sharedPackageHandle ) -in [string[]]$packageHandlesToIgnore ) -and
+                                                -not ( $_.installedAppOrFeatureName )
+                                            }
+
+    #Add a warning to the feedback if some of the chocolatey packages dont have any hardware components associated with any HardwareIDs
+    if( $driverPackagesWithMissingInstalledAppOrFeatureName ) {
+        $testrailFeedbacktext += "`n`n** TEST BLOCKED **`n`nTHE FOLLOWING [02-Software] CHOCO PACKAGES DO NOT HAVE AN [Installed App/Fearure Name] SET.`nPlease either:`n - Add the Installed App/Feature Name(s) to the relevant Choco Package Records in OSBuilder`n - Or add either the Package Handle or Shared External Handle to the blocklist in the OSValidation Config File [OSValidation\config\config.yaml]`n`n"
+        $testrailFeedbacktext += ( $driverPackagesWithMissingInstalledAppOrFeatureName | 
+                                   Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                                                 @{Name='Package Handle'; Expression='chocoPackageHandle'}, 
+                                                 @{Name='Shared External Handle'; Expression='sharedPackageHandle'}, 
+                                                 @{Name='Expected Version'; Expression='osValidationPackageVersion'} |
+                                    Format-Table | Out-String 
+                                 ).Trim()
+        $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    }
+
+    # Now fetch all choco packages with HardwareIDs attached, that arent in the blocklist
+    $allPackagesWithInstalledAppOrFeatureNameSet = $OSValidationTemplatePSObject.PackageVersions | Where-Object {
+        -not ( [string]($_.chocoPackageHandle  ) -in [string[]]$packageHandlesToIgnore ) -and
+        -not ( [string]($_.sharedPackageHandle ) -in [string[]]$packageHandlesToIgnore ) -and
+        ( $_.installedAppOrFeatureName )
+    }
+
+    # Get a list of all Installed Apps in windows Settings --> Installed Apps
+    [PSObject[]]$installedAppsPSObjects = Get-WMIObject Win32_InstalledWin32Program
+
+    # Loop through all non-blocklisted choco packages with HardwareIDs attached, so that we can search for them in device manager
+    foreach( $packageObject in [PSCustomObject[]]$allPackagesWithInstalledAppOrFeatureNameSet ) {
+        
+        #Get list of PNPDevices whose InstanceIDs begin with at least one of the hardwareIDs
+        $matchingInstalledApps = [PSObject[]]( $installedAppsPSObjects | Where-Object {  $_.Name -like $packageObject.installedAppOrFeatureName } )
+
+        # add the number of found devices to the package object in case we want to report on it later (also the device name if only one matched)
+        # DEBUG: Write-Host "Matching Devices: $($matchingPNPDevices.Length)"
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundInstalledApps' -Value $matchingInstalledApps.Length
+        $matchedInstalledAppName = "None"
+        if( $matchingInstalledApps.Length -eq 1 ) {
+            $matchedInstalledAppName = $matchingInstalledApps[0].Name
+        }
+        if( $matchingInstalledApps.Length -gt 1 ) {
+            $matchedInstalledAppName = "MULTIPLE DEVICES"
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'foundInstalledAppName' -Value $matchedInstalledAppName
+        $packageObject | Add-Member -Type NoteProperty -Name 'allFoundInstalledAppNames' -Value "[$( ( [string[]]$matchingInstalledApps.Name ) -join '], [' )]"
+        
+        #DELETEME: #Now look through all the matching devices for ones with drivers, where the driver has a matching version
+        #DELETEME: $allDriverVersions = ( ( $matchingInstalledApps | Get-CimAssociatedInstance -ResultClassName Win32_SystemDriver -ErrorAction SilentlyContinue ).PathName | Get-Item -ErrorAction SilentlyContinue ).VersionInfo.ProductVersion
+        # Now Get a list of all versions from matching results, and a deduplicated list too
+        [string[]]$foundAppVersions = [string[]]( $matchingInstalledApps.Version )
+        [string[]]$foundAppVersions_Unique = [string[]]$foundAppVersions | Select-Object -Unique
+        
+        # Add the number of found Driver Versions to the package object in case we want to report on it later (also the device name if only one matched)
+        # DEBUG: Write-Host "Found Driver Versions: $($allDriverVersions.Length)"
+        # DEBUG: Write-Host "All Driver Versions for these Devices: [$( $allDriverVersions -join '], [' )]"
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundAppVersions' -Value $foundAppVersions_Unique.Length
+        $matchedAppVersion = "None"
+        if( ([string[]]$foundAppVersions_Unique).Length -eq 1 ) {
+            $matchedAppVersion = ([string[]]$foundAppVersions_Unique)[0]
+        }
+        if( ([string[]]$foundAppVersions_Unique).Length -gt 1 ) {
+            $matchedAppVersion = "MULTIPLE VERSIONS"
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'foundAppVersion' -Value $matchedAppVersion
+        $packageObject | Add-Member -Type NoteProperty -Name 'allFoundAppVersions' -Value "[$( $foundAppVersions_Unique -join '], [' )]"
+
+        # Is the correct app version installed? ie Is at least one App Version for at least one matching App exactly the same as osValidationPackageVersion fromt he OSValidationTemplate.ps1 choco package object
+        $finalReuslt = if( [string]$packageObject.osValidationPackageVersion -eq $matchedAppVersion ) { 'PASS' } else { 'FAIL' }
+        #DELETEME: if( $matchingInstalledApps.Length -eq 0 ) {
+        #DELETEME:     #if its a fail because we couldnt find any devices matching the HardwareIds the set this record to BLOCKED instead of pass or fail because it means the user needs to add a hardware id to OS Builder
+        #DELETEME:     $finalReuslt = 'BLOCKED'
+        #DELETEME: }
+        $packageObject | Add-Member -Type NoteProperty -Name 'result' -Value $finalReuslt
+    }
+
+    #Now that we have completed searching for all matching devices and driver versions, we can calculate the final result
+    $overallResult = 'PASSED'
+    if( [string[]]$allPackagesWithInstalledAppOrFeatureNameSet.result -contains 'FAIL' ) {
+        $overallResult = 'FAILED'
+    }
+    elseif( $driverPackagesWithMissingInstalledAppOrFeatureName.Length -or ( [string[]]$allPackagesWithInstalledAppOrFeatureNameSet.result -contains 'BLOCKED' ) ) {
+        $overallResult = 'BLOCKED'
+    }
+
+    #Add the overall results table to the testrail resposne text
+    $testrailFeedbacktext += "`n`nFINAL RESULTS TABLE:`n`n"
+    $testrailFeedbacktext += ( $allPackagesWithInstalledAppOrFeatureNameSet | 
+                               Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                                             @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
+                                             @{Name='Expected App Version'; Expression='osValidationPackageVersion'},
+                                             @{Name='Found App Version'; Expression='foundAppVersion'}, 
+                                             @{Name='Result'; Expression='result'} |
+                               Format-Table | Out-String 
+                             ).Trim()
+    $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+
+    #if some of the tests came back blocked then the user needs to add some hardware ids to OSBuilder
+    [PSCustomObject[]]$noAppFoundResults = ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -eq 0 } )
+    if( $noAppFoundResults ) {
+        #Add the overall results table to the testrail resposne text
+        $testrailFeedbacktext += "`n`nNO APPS COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nif the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
+        $testrailFeedbacktext += ( $noAppFoundResults | 
+                                   Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                                                 @{Name='Installed App or Feature name'; Expression='installedAppOrFeatureName'} |
+                                   Format-List | Out-String 
+                                 ).Trim()
+        $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    }
+
+    #Add the overall results table to the testrail resposne text
+    $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE AN APP WAS FOUND BUT THE VERSION CHECK FAILED:`n`n"
+    $testrailFeedbacktext += ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -ge 1 } | 
+                               Select-Object @{Name='Package Category'; Expression='category'},
+                                             @{Name='Package Name'; Expression='friendlyName'},
+                                             @{Name='Package Handle'; Expression='chocoPackageHandle'},
+                                             @{Name='Shared External Handle'; Expression='sharedPackageHandle'},
+                                             @{Name='Version Choco Handle'; Expression='chocoPackageVersion'},
+                                             @{Name='Version Public Name'; Expression='publicPackageVersion'},
+                                             @{Name='App Version Expected in Windows Settings'; Expression='osValidationPackageVersion'},
+                                             @{Name='# of Found Devices'; Expression='noOfFoundInstalledApps'},
+                                             @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
+                                             @{Name='All Found App Names'; Expression='allFoundInstalledAppNames'}, 
+                                             @{Name='# of Found Versions'; Expression='noOfFoundAppVersions'},
+                                             @{Name='Found Version Name'; Expression='foundAppVersion'}, 
+                                             @{Name='All Found Version Names'; Expression='allFoundAppVersions'}, 
+                                             @{Name='Result'; Expression='result'} |
+                               Format-List * | Out-String 
+                             ).Trim()
+    $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+
+    #dust for debugging, doent get printed during normal execution
+    Write-Verbose $testrailFeedbacktext
+
+    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext
+}
+
 
 
 # Export only the functions using PowerShell standard verb-noun naming.
