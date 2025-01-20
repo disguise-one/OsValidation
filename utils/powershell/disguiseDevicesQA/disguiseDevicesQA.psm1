@@ -373,11 +373,11 @@ Function Test-DeviceManagerDriverVersions {
     #Add the overall results table to the testrail resposne text
     $testrailFeedbacktext += "`n`nFINAL RESULTS TABLE:`n`n"
     $testrailFeedbacktext += ( $allPackagesWithHardwareIDs | 
-                               Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                               Select-Object @{Name='Result'; Expression='result'},
+                                             @{Name='Choco Package Name'; Expression='friendlyName'},
                                              @{Name='Found Device on this Machine'; Expression='foundDeviceName'}, 
                                              @{Name='Expected Version'; Expression='osValidationPackageVersion'},
-                                             @{Name='Found Version'; Expression='foundDriverVersion'}, 
-                                             @{Name='Result'; Expression='result'} |
+                                             @{Name='Found Version'; Expression='foundDriverVersion'} |
                                Format-Table * | Out-String -Width 1024
                              ).Trim()
     $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"

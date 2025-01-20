@@ -638,6 +638,11 @@ Function Test-InstalledAppAndFeatureVersions {
     # Loop through all non-blocklisted choco packages with HardwareIDs attached, so that we can search for them in device manager
     foreach( $packageObject in [PSCustomObject[]]$allPackagesWithInstalledAppOrFeatureNameSet ) {
         
+        #For Online Apps there will be no chocoVersionHandle, for these we just look for Any app installed not a specific version
+        if( -not $packageObject.chocoPackageVersion ) {
+            $packageObject.osValidationPackageVersion = "ANY"
+        }
+
         #Get list of PNPDevices whose InstanceIDs begin with at least one of the hardwareIDs
         $matchingInstalledApps = [PSObject[]]( $installedAppsPSObjects | Where-Object {  $_.Name -like $packageObject.installedAppOrFeatureName } )
 
@@ -675,11 +680,8 @@ Function Test-InstalledAppAndFeatureVersions {
         $packageObject | Add-Member -Type NoteProperty -Name 'allFoundAppVersions' -Value "[$( $foundAppVersions_Unique -join '], [' )]"
 
         # Is the correct app version installed? ie Is at least one App Version for at least one matching App exactly the same as osValidationPackageVersion fromt he OSValidationTemplate.ps1 choco package object
-        $finalReuslt = if( [string]$packageObject.osValidationPackageVersion -in $foundAppVersions_Unique ) { 'PASS' } else { 'FAIL' }
-        #DELETEME: if( $matchingInstalledApps.Length -eq 0 ) {
-        #DELETEME:     #if its a fail because we couldnt find any devices matching the HardwareIds the set this record to BLOCKED instead of pass or fail because it means the user needs to add a hardware id to OS Builder
-        #DELETEME:     $finalReuslt = 'BLOCKED'
-        #DELETEME: }
+        $finalReuslt = if( ( [string]$packageObject.osValidationPackageVersion -eq "ANY" -and [string]$packageObject.noOfFoundInstalledApps ) -or #foir online apps there is no version so we just make sure the app was found
+                           ( [string]$packageObject.osValidationPackageVersion -ne "ANY" -and [string]$packageObject.osValidationPackageVersion -in $foundAppVersions_Unique ) ) { 'PASS' } else { 'FAIL' }
         $packageObject | Add-Member -Type NoteProperty -Name 'result' -Value $finalReuslt
     }
 
@@ -695,12 +697,12 @@ Function Test-InstalledAppAndFeatureVersions {
     #Add the overall results table to the testrail resposne text
     $testrailFeedbacktext += "`n`nFINAL RESULTS TABLE:`n`n"
     $testrailFeedbacktext += ( $allPackagesWithInstalledAppOrFeatureNameSet | 
-                               Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
+                               Select-Object @{Name='Result'; Expression='result'},
+                                             @{Name='Choco Package Name'; Expression='friendlyName'},
                                              @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
                                              @{Name='Expected App Version'; Expression='osValidationPackageVersion'},
-                                             @{Name='Found App Version'; Expression='foundAppVersion'}, 
-                                             @{Name='Result'; Expression='result'} |
-                               Format-Table | Out-String 
+                                             @{Name='Found App Version'; Expression='foundAppVersion'} |
+                               Format-Table | Out-String -Width 1024
                              ).Trim()
     $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
 
