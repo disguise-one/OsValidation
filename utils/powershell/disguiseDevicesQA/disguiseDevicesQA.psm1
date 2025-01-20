@@ -16,7 +16,8 @@ function Test-GraphicsCardControlPannel{
     Import-Module $path -Force
     $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
     Import-Module $path -Force
-    
+
+    $nw = $null
 
     try{
         $hw = Assert-Hardware
@@ -69,6 +70,9 @@ function Test-GraphicsCardControlPannel{
         }
 
         return Format-ResultsOutput -Result $testValue -Message "$($returnMessage)"  -pathToImage $pathToImageStore
+    }elseif(-not $hw){
+        # An error occured when calling AssertHardware, so we cannot carry out the test
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Cannot poll GPU as d3HardwareValidation has not been imported correctly."
     }
     else{
         # AMD STUFF - Not implemented yet.
@@ -295,7 +299,7 @@ Function Test-DeviceManagerDriverVersions {
         #Get list of PNPDevices whose InstanceIDs begin with at least one of the hardwareIDs
         $matchingPNPDevices = [CimInstance[]]@()
         foreach( $hardwareID in [string[]]$thisPackagesPossibleHardwareIDs ) {
-            [CimInstance[]]$matchingPNPDevices += [CimInstance[]]( $deviceManagerDevicePSObjects | Where-Object { $_.InstanceID -like "$( $hardwareID )*"  } )
+            [CimInstance[]]$matchingPNPDevices += [CimInstance[]]( $deviceManagerDevicePSObjects | Where-Object { $_.HardwareId -like "$( $hardwareID )*"  } )
         }
         # Now Deduplicate the list of matching devices
         [CimInstance[]]$matchingPNPDevices = [CimInstance[]]$matchingPNPDevices | Sort-Object  -Unique

@@ -136,11 +136,6 @@ function Get-DeviceManagerDevicePropertiesScreenShotsAsSingleImage {
         $null = (New-Object -ComObject WScript.Shell).AppActivate($newProcessId)
         Start-Sleep -Milliseconds 500
     }
-    #tab to the tabs :)
-    [Windows.Forms.Sendkeys]::SendWait("{TAB}")  
-    [Windows.Forms.Sendkeys]::SendWait("{TAB}")  
-    [Windows.Forms.Sendkeys]::SendWait("{TAB}")  
-    [Windows.Forms.Sendkeys]::SendWait("{TAB}")  
 
     #create an array of paths to screenshot part filenames to be joined together
     [string[]]$TempImageFilePaths = [string[]]@()
@@ -156,10 +151,14 @@ function Get-DeviceManagerDevicePropertiesScreenShotsAsSingleImage {
             Write-Warning "Screen Capture Failed For Part: [$($imagePartFullFileNameAndPath)]"
         }
 
-        #now flick through to next tab with right cursor arrow
-        [Windows.Forms.Sendkeys]::SendWait("{RIGHT}")
-        Start-Sleep -Milliseconds 500
-
+        #now re-hilight the window and flick through to next tab ctrl+Tab
+        if( $newProcessId ) {
+            $null = (New-Object -ComObject WScript.Shell).AppActivate($newProcessId)
+            Start-Sleep -Milliseconds 500
+            [Windows.Forms.Sendkeys]::SendWait("^{TAB}")
+            Start-Sleep -Milliseconds 500
+        }
+        
         $imagePartNumber += 1
     }
 

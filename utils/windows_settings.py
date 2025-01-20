@@ -67,7 +67,9 @@ def check_firewall_disabled(OSValidationDict):
     firewallTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "374731", "Windows Firewall Disabled")
     return firewallTestCase
 
-
+def check_installed_app_versions(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-InstalledAppAndFeatureVersions -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "795477", "Installed Apps and Features Version Check")
 
 
 #===================================================================================

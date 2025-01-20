@@ -649,7 +649,7 @@ Function Test-InstalledAppAndFeatureVersions {
             $matchedInstalledAppName = $matchingInstalledApps[0].Name
         }
         if( $matchingInstalledApps.Length -gt 1 ) {
-            $matchedInstalledAppName = "MULTIPLE DEVICES"
+            $matchedInstalledAppName = "MULTIPLE APPS"
         }
         $packageObject | Add-Member -Type NoteProperty -Name 'foundInstalledAppName' -Value $matchedInstalledAppName
         $packageObject | Add-Member -Type NoteProperty -Name 'allFoundInstalledAppNames' -Value "[$( ( [string[]]$matchingInstalledApps.Name ) -join '], [' )]"
@@ -675,7 +675,7 @@ Function Test-InstalledAppAndFeatureVersions {
         $packageObject | Add-Member -Type NoteProperty -Name 'allFoundAppVersions' -Value "[$( $foundAppVersions_Unique -join '], [' )]"
 
         # Is the correct app version installed? ie Is at least one App Version for at least one matching App exactly the same as osValidationPackageVersion fromt he OSValidationTemplate.ps1 choco package object
-        $finalReuslt = if( [string]$packageObject.osValidationPackageVersion -eq $matchedAppVersion ) { 'PASS' } else { 'FAIL' }
+        $finalReuslt = if( [string]$packageObject.osValidationPackageVersion -in $foundAppVersions_Unique ) { 'PASS' } else { 'FAIL' }
         #DELETEME: if( $matchingInstalledApps.Length -eq 0 ) {
         #DELETEME:     #if its a fail because we couldnt find any devices matching the HardwareIds the set this record to BLOCKED instead of pass or fail because it means the user needs to add a hardware id to OS Builder
         #DELETEME:     $finalReuslt = 'BLOCKED'
@@ -708,7 +708,7 @@ Function Test-InstalledAppAndFeatureVersions {
     [PSCustomObject[]]$noAppFoundResults = ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -eq 0 } )
     if( $noAppFoundResults ) {
         #Add the overall results table to the testrail resposne text
-        $testrailFeedbacktext += "`n`nNO APPS COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nif the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
+        $testrailFeedbacktext += "`n`nNO APPS COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nIf the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
         $testrailFeedbacktext += ( $noAppFoundResults | 
                                    Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
                                                  @{Name='Installed App or Feature name'; Expression='installedAppOrFeatureName'} |
@@ -718,7 +718,7 @@ Function Test-InstalledAppAndFeatureVersions {
     }
 
     #Add the overall results table to the testrail resposne text
-    $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE AN APP WAS FOUND BUT THE VERSION CHECK FAILED:`n`n"
+    $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE MULTIPLE MATCHING APPS WERE FOUND (best to update OSBuilder to make the Search more specific):`n`n"
     $testrailFeedbacktext += ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -ge 1 } | 
                                Select-Object @{Name='Package Category'; Expression='category'},
                                              @{Name='Package Name'; Expression='friendlyName'},
@@ -738,10 +738,20 @@ Function Test-InstalledAppAndFeatureVersions {
                              ).Trim()
     $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
 
+    
+
     #dust for debugging, doent get printed during normal execution
     Write-Verbose $testrailFeedbacktext
 
-    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext
+    #Generate a file of all the installed apps and their versions to upload as an attachment
+    $OSValidationConfig = Import-OSValidatonConfig
+    $TempImageStoreRootDir = $OSValidationConfig.pathToOSValidationTempImageStore
+    $filenameSuffixTimestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    [string]$fileToUpload = Join-Path $TempImageStoreRootDir "ALL_INSTALLED_APPS__$($filenameSuffixTimestamp).txt"
+    Get-WmiObject -Class Win32_InstalledWin32Program | Select-Object Name, Version | Out-File -FilePath $fileToUpload
+    [string[]]$allFilesToUpload = [string[]]@( $fileToUpload )
+
+    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -FormatMessageWithMonoSpaceFont -pathToImageArr $allFilesToUpload
 }
 
 

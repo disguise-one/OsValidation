@@ -155,7 +155,8 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             windows_settings.check_notifications_disabled,
             windows_settings.check_VFC_overlay,
             windows_settings.check_windows_update_disabled,
-            windows_settings.check_firewall_disabled
+            windows_settings.check_firewall_disabled,
+            windows_settings.check_installed_app_versions
         ]
         failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
