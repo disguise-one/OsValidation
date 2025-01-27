@@ -3,62 +3,6 @@ import logging
 import logging.handlers
 from colorlog import ColoredFormatter
 
-# # Define the directory for the logs relative to the current file
-# log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
-
-# # Create the logs directory if it does not exist
-# if not os.path.exists(log_dir):
-#     os.makedirs(log_dir)
-
-# # Define the path for the log file within the logs directory
-# log_file = os.path.join(log_dir, 'os_test_run.log')
-
-# # Create a logger object
-# logger = logging.getLogger()
-# logger.setLevel(logging.DEBUG)
-
-# # Create a handler for rotating log files
-# file_handler = logging.handlers.RotatingFileHandler(log_file, maxBytes=100000, backupCount=5)
-# file_handler.setLevel(logging.DEBUG)
-
-# # Create a console handler with color output
-# console_handler = logging.StreamHandler()
-# console_handler.setLevel(logging.DEBUG)
-
-# # Create formatters and set them for handlers
-# file_formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-# console_formatter = ColoredFormatter(
-#     '%(log_color)s%(asctime)s | %(levelname)s | %(message)s%(reset)s',
-#     datefmt='%Y-%m-%d %H:%M:%S',
-#     log_colors={
-#         'DEBUG':    'cyan',
-#         'INFO':     'green',
-#         'WARNING':  'yellow',
-#         'ERROR':    'red',
-#         'CRITICAL': 'red,bg_white',
-#     }
-# )
-
-# file_handler.setFormatter(file_formatter)
-# console_handler.setFormatter(console_formatter)
-
-# # Add handlers to the logger
-# logger.addHandler(file_handler)
-# logger.addHandler(console_handler)
-
-# def change_log_path(newPath):
-#     print(f"Changing logging path to [{newPath}]")
-
-#     if os.path.exists(newPath):
-#         print(f"Cannot change path to [{newPath}] as a file already exists in that location")
-#         return False
-
-#     # we go to the log 
-#     logger = logging.getLogger()
-#     logger
-#     f = open("demofile.txt", "r")
-
-
 
 class bespokeLogging:
     log_dir = None
@@ -66,6 +10,13 @@ class bespokeLogging:
     console_handler = None
     file_formatter = None
     log_file = None
+    testrail_api_dict = {
+        "client" : None,
+        "projectNumber" : None,
+        "suite_id" : None,
+        "name" : None
+
+    }
 
     logger = logging.getLogger()
     console_formatter = ColoredFormatter(
@@ -197,6 +148,26 @@ class bespokeLogging:
         
         # Set the new handler
         self.logger.addHandler(self.file_handler)
+
+    def read_log_file(self):
+        try:
+            logFile = open(self.log_file, "r")
+        except Exception as error:
+            print(f"Cannot open log file [{self.log_file}]. Log file directory change aborted.")
+            print(str(error))
+
+        # Get the content of the log file
+        try:
+            content = logFile.read()
+        except Exception as error:
+            print(f"Cannot read log file [{self.log_file}]. Log file directory change aborted.")
+            print(str(error))
+        
+        return content
+
+    def upload_log_to_testrail_and_exit(self):
+        print( "upload_log_to_testrail_and_exit NOT YET IMPLEMENETED" )
+
 
         
 

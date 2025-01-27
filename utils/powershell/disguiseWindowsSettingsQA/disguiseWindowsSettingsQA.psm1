@@ -171,7 +171,9 @@ function Get-AndTestWindowsAppMenuContents{
     $imageArray = @()
     foreach($appName in $appCheckingNamesArray){
         #open the job via a start job command so we can tell if it has executed or not
+        Write-Host "OUTSIDE JOB: env:path = [$($env:PATH)]"
         $appJob = start-job -Name "OSQAWindowsAppsTesting" -ScriptBlock {
+            Write-Host "INSIDE JOB: env:path = [$($env:PATH)]"
             $sbAppName = $($using:appName) + ".exe"
             Start-Process $sbAppName
         }
@@ -316,13 +318,25 @@ function Test-ChromeHistory{
     # Test if it exists
     # See if it isnt a disguise website
     $whitelistedHistoryPages = (Get-ConfigYAMLAsPSObject).Windows_settings.chrome_allowed_history
-    $nonWhiteListedPages = @()
+    $fullHistory = @()
+    $index = 0
+    $numberOfNonAllowedPages = $history.data.length
     foreach($site in $history.data){
+        $HasSiteBeenFoundOnce = $False
         foreach($whitelistedSite in $whitelistedHistoryPages){
-            if($site -notmatch $whitelistedSite){
-                $nonWhiteListedPages += $site
+            if($site -match $whitelistedSite){
+                $HasSiteBeenFoundOnce = $True
+                $numberOfNonAllowedPages--
+                break
             }
         }
+
+        $fullHistory +=[PSCustomObject]@{
+            index = $index
+            URL = $site
+            Allowed = $HasSiteBeenFoundOnce
+        }
+        $index++
     }
 
     # Gather evidence
@@ -342,12 +356,28 @@ function Test-ChromeHistory{
     $evidenceSuccess = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
 
     Get-Process | Where-Object {$_.ProcessName -eq "chrome"} | Stop-Process
-    if($nonWhiteListedPages){
-        return Format-ResultsOutput -Result "FAILED" -Message "Non-Whitelisted website(s) found: [$($nonWhiteListedPages). If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
+
+    $message = @"
+    -------------------------------------------------------------
+                    Google Chrome History Results
+    -------------------------------------------------------------
+    Test Result:                            REPLACEMENT2
+    Number of non-allowed web pages:        REPLACEMENT1
+    Web-Page URLs: 
+
+"@
+    $message = $message -replace "REPLACEMENT1", "[$($numberOfNonAllowedPages)]"
+    $message += $fullHistory | Format-Table | Out-String
+
+    if($numberOfNonAllowedPages -ne 0){
+        $testResult = "FAILED"
     }else{
-        return Format-ResultsOutput -Result "PASSED" -Message "Only whitelisted websites present" -pathToImage $pathToImageStore
+        $testResult = "PASSED"
     }
 
+    $message = $message -replace "REPLACEMENT2", "$testResult"
+
+    return Format-ResultsOutput -Result $testResult -Message $message -pathToImage $pathToImageStore
 }
 
 <#
@@ -634,6 +664,7 @@ Function Test-InstalledAppAndFeatureVersions {
 
     # Get a list of all Installed Apps in windows Settings --> Installed Apps
     [PSObject[]]$installedAppsPSObjects = Get-WMIObject Win32_InstalledWin32Program
+    [PSObject[]]$installedWindowsCapabilityPSObjects = [PSObject[]]( Get-WindowsCapability -Online | Where-Object { $_.State -eq 'Installed' } )
 
     # Loop through all non-blocklisted choco packages with HardwareIDs attached, so that we can search for them in device manager
     foreach( $packageObject in [PSCustomObject[]]$allPackagesWithInstalledAppOrFeatureNameSet ) {
@@ -645,9 +676,9 @@ Function Test-InstalledAppAndFeatureVersions {
 
         #Get list of PNPDevices whose InstanceIDs begin with at least one of the hardwareIDs
         $matchingInstalledApps = [PSObject[]]( $installedAppsPSObjects | Where-Object {  $_.Name -like $packageObject.installedAppOrFeatureName } )
+        $matchingInstalledFeatures = [PSObject[]]( $installedWindowsCapabilityPSObjects | Where-Object {  $_.Name -like $packageObject.installedAppOrFeatureName } )
 
-        # add the number of found devices to the package object in case we want to report on it later (also the device name if only one matched)
-        # DEBUG: Write-Host "Matching Devices: $($matchingPNPDevices.Length)"
+        # add the number of found apps to the package object in case we want to report on it later (also the app name if only one matched)
         $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundInstalledApps' -Value $matchingInstalledApps.Length
         $matchedInstalledAppName = "None"
         if( $matchingInstalledApps.Length -eq 1 ) {
@@ -659,15 +690,23 @@ Function Test-InstalledAppAndFeatureVersions {
         $packageObject | Add-Member -Type NoteProperty -Name 'foundInstalledAppName' -Value $matchedInstalledAppName
         $packageObject | Add-Member -Type NoteProperty -Name 'allFoundInstalledAppNames' -Value "[$( ( [string[]]$matchingInstalledApps.Name ) -join '], [' )]"
         
-        #DELETEME: #Now look through all the matching devices for ones with drivers, where the driver has a matching version
-        #DELETEME: $allDriverVersions = ( ( $matchingInstalledApps | Get-CimAssociatedInstance -ResultClassName Win32_SystemDriver -ErrorAction SilentlyContinue ).PathName | Get-Item -ErrorAction SilentlyContinue ).VersionInfo.ProductVersion
+        # add the number of found Windows Features to the package object in case we want to report on it later (also the device name if only one matched)
+        $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundInstalledFeatures' -Value $matchingInstalledFeatures.Length
+        $matchedInstalledFeatureName = "None"
+        if( [PSObject[]]$matchingInstalledFeatures.Length -eq 1 ) {
+            $matchedInstalledFeatureName = $matchingInstalledFeatures[0].Name
+        }
+        if( [PSObject[]]$matchingInstalledFeatures.Length -gt 1 ) {
+            $matchedInstalledFeatureName = "MULTIPLE FEATURES"
+        }
+        $packageObject | Add-Member -Type NoteProperty -Name 'foundInstalledFeatureName' -Value $matchedInstalledFeatureName
+        $packageObject | Add-Member -Type NoteProperty -Name 'allFoundInstalledFeatureNames' -Value "[$( ( [string[]]$matchingInstalledFeatures.Name ) -join '], [' )]"
+
         # Now Get a list of all versions from matching results, and a deduplicated list too
         [string[]]$foundAppVersions = [string[]]( $matchingInstalledApps.Version )
         [string[]]$foundAppVersions_Unique = [string[]]$foundAppVersions | Select-Object -Unique
         
-        # Add the number of found Driver Versions to the package object in case we want to report on it later (also the device name if only one matched)
-        # DEBUG: Write-Host "Found Driver Versions: $($allDriverVersions.Length)"
-        # DEBUG: Write-Host "All Driver Versions for these Devices: [$( $allDriverVersions -join '], [' )]"
+        # Add the number of found App Versions to the package object in case we want to report on it later (also the device name if only one matched)
         $packageObject | Add-Member -Type NoteProperty -Name 'noOfFoundAppVersions' -Value $foundAppVersions_Unique.Length
         $matchedAppVersion = "None"
         if( ([string[]]$foundAppVersions_Unique).Length -eq 1 ) {
@@ -679,9 +718,13 @@ Function Test-InstalledAppAndFeatureVersions {
         $packageObject | Add-Member -Type NoteProperty -Name 'foundAppVersion' -Value $matchedAppVersion
         $packageObject | Add-Member -Type NoteProperty -Name 'allFoundAppVersions' -Value "[$( $foundAppVersions_Unique -join '], [' )]"
 
+        #the features do hot have versions so theres no need to pull the feature versions
+
         # Is the correct app version installed? ie Is at least one App Version for at least one matching App exactly the same as osValidationPackageVersion fromt he OSValidationTemplate.ps1 choco package object
-        $finalReuslt = if( ( [string]$packageObject.osValidationPackageVersion -eq "ANY" -and [string]$packageObject.noOfFoundInstalledApps ) -or #foir online apps there is no version so we just make sure the app was found
-                           ( [string]$packageObject.osValidationPackageVersion -ne "ANY" -and [string]$packageObject.osValidationPackageVersion -in $foundAppVersions_Unique ) ) { 'PASS' } else { 'FAIL' }
+        $finalReuslt = if( ( [string]$packageObject.osValidationPackageVersion -eq "ANY" -and [int]$packageObject.noOfFoundInstalledApps ) -or #foir online apps there is no version so we just make sure the app was found
+                           ( [string]$packageObject.osValidationPackageVersion -ne "ANY" -and [string]$packageObject.osValidationPackageVersion -in $foundAppVersions_Unique ) -or
+                           ( [string]$packageObject.osValidationPackageVersion -eq "ANY" -and ( -not [int]$packageObject.noOfFoundInstalledApps ) -and ( [int]$packageObject.noOfFoundInstalledFeatures ) )
+                         ) { 'PASS' } else { 'FAIL' }
         $packageObject | Add-Member -Type NoteProperty -Name 'result' -Value $finalReuslt
     }
 
@@ -700,7 +743,8 @@ Function Test-InstalledAppAndFeatureVersions {
                                Select-Object @{Name='Result'; Expression='result'},
                                              @{Name='Choco Package Name'; Expression='friendlyName'},
                                              @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
-                                             @{Name='Expected App Version'; Expression='osValidationPackageVersion'},
+                                             @{Name='Found Feature Name'; Expression='foundInstalledAppName'}, 
+                                             @{Name='Expected App/Feature Version'; Expression='osValidationPackageVersion'},
                                              @{Name='Found App Version'; Expression='foundAppVersion'} |
                                Format-Table | Out-String -Width 1024
                              ).Trim()
@@ -710,7 +754,7 @@ Function Test-InstalledAppAndFeatureVersions {
     [PSCustomObject[]]$noAppFoundResults = ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -eq 0 } )
     if( $noAppFoundResults ) {
         #Add the overall results table to the testrail resposne text
-        $testrailFeedbacktext += "`n`nNO APPS COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nIf the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
+        $testrailFeedbacktext += "`n`nNO APPS OR FEATURES COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nIf the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
         $testrailFeedbacktext += ( $noAppFoundResults | 
                                    Select-Object @{Name='Choco Package Name'; Expression='friendlyName'},
                                                  @{Name='Installed App or Feature name'; Expression='installedAppOrFeatureName'} |
@@ -719,29 +763,60 @@ Function Test-InstalledAppAndFeatureVersions {
         $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
     }
 
-    #Add the overall results table to the testrail resposne text
-    $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE MULTIPLE MATCHING APPS WERE FOUND (best to update OSBuilder to make the Search more specific):`n`n"
-    $testrailFeedbacktext += ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -ge 1 } | 
-                               Select-Object @{Name='Package Category'; Expression='category'},
-                                             @{Name='Package Name'; Expression='friendlyName'},
-                                             @{Name='Package Handle'; Expression='chocoPackageHandle'},
-                                             @{Name='Shared External Handle'; Expression='sharedPackageHandle'},
-                                             @{Name='Version Choco Handle'; Expression='chocoPackageVersion'},
-                                             @{Name='Version Public Name'; Expression='publicPackageVersion'},
-                                             @{Name='App Version Expected in Windows Settings'; Expression='osValidationPackageVersion'},
-                                             @{Name='# of Found Devices'; Expression='noOfFoundInstalledApps'},
-                                             @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
-                                             @{Name='All Found App Names'; Expression='allFoundInstalledAppNames'}, 
-                                             @{Name='# of Found Versions'; Expression='noOfFoundAppVersions'},
-                                             @{Name='Found Version Name'; Expression='foundAppVersion'}, 
-                                             @{Name='All Found Version Names'; Expression='allFoundAppVersions'}, 
-                                             @{Name='Result'; Expression='result'} |
-                               Format-List * | Out-String 
-                             ).Trim()
-    $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    #Add a detailed breakdown of all tests that failed
+    [PSCustomObject[]]$packagesThatFailed = $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.result -ne 'PASS' }
+    if( $packagesThatFailed.Length ) {
+        $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST THAT FAILED:`n`n"
+        $testrailFeedbacktext += ( $packagesThatFailed | 
+                                Select-Object   @{Name='Package Category'; Expression='category'},
+                                                @{Name='Package Name'; Expression='friendlyName'},
+                                                @{Name='Package Handle'; Expression='chocoPackageHandle'},
+                                                @{Name='Shared External Handle'; Expression='sharedPackageHandle'},
+                                                @{Name='Version Choco Handle'; Expression='chocoPackageVersion'},
+                                                @{Name='Version Public Name'; Expression='publicPackageVersion'},
+                                                @{Name='App Version Expected in Windows Settings'; Expression='osValidationPackageVersion'},
+                                                @{Name='# of Found Apps'; Expression='noOfFoundInstalledApps'},
+                                                @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
+                                                @{Name='All Found App Names'; Expression='allFoundInstalledAppNames'}, 
+                                                @{Name='# of Found App Versions'; Expression='noOfFoundAppVersions'},
+                                                @{Name='Found App Version Name'; Expression='foundAppVersion'}, 
+                                                @{Name='All Found App Version Names'; Expression='allFoundAppVersions'}, 
+                                                @{Name='# of Found Features'; Expression='noOfFoundInstalledFeatures'},
+                                                @{Name='Found Features Name'; Expression='foundInstalledFeatureName'}, 
+                                                @{Name='All Found Features Names'; Expression='allFoundInstalledFeatureNames'}, 
+                                                @{Name='Result'; Expression='result'} |
+                                Format-List * | Out-String 
+                                ).Trim()
+        $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    }
 
+    #Add a detailed breakdown where multiple matyches were found
+    [PSCustomObject[]]$packagesWithMultipleMatches = $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { ( $_.noOfFoundInstalledApps ) -ge 1 -or ( ( $_.noOfFoundInstalledApps -eq 0 ) -and $_.noOfFoundInstalledFeatures -ge 1 ) -or ( $_.noOfFoundAppVersions -ge 1 ) }
+    if( $packagesWithMultipleMatches.Length ) {
+        $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE MULTIPLE APPS/APP VERSIONS/FEATURES MATCHED`n** This doesnt mean the test has failed, but If possible, please edit the App/Feature names in OSBuilder to make these more specific **:`n`n"
+        $testrailFeedbacktext += ( $packagesWithMultipleMatches | 
+                                Select-Object   @{Name='Package Category'; Expression='category'},
+                                                @{Name='Package Name'; Expression='friendlyName'},
+                                                @{Name='Package Handle'; Expression='chocoPackageHandle'},
+                                                @{Name='Shared External Handle'; Expression='sharedPackageHandle'},
+                                                @{Name='Version Choco Handle'; Expression='chocoPackageVersion'},
+                                                @{Name='Version Public Name'; Expression='publicPackageVersion'},
+                                                @{Name='App Version Expected in Windows Settings'; Expression='osValidationPackageVersion'},
+                                                @{Name='# of Found Apps'; Expression='noOfFoundInstalledApps'},
+                                                @{Name='Found App Name'; Expression='foundInstalledAppName'}, 
+                                                @{Name='All Found App Names'; Expression='allFoundInstalledAppNames'}, 
+                                                @{Name='# of Found App Versions'; Expression='noOfFoundAppVersions'},
+                                                @{Name='Found App Version Name'; Expression='foundAppVersion'}, 
+                                                @{Name='All Found App Version Names'; Expression='allFoundAppVersions'}, 
+                                                @{Name='# of Found Features'; Expression='noOfFoundInstalledFeatures'},
+                                                @{Name='Found Features Name'; Expression='foundInstalledFeatureName'}, 
+                                                @{Name='All Found Features Names'; Expression='allFoundInstalledFeatureNames'}, 
+                                                @{Name='Result'; Expression='result'} |
+                                Format-List * | Out-String 
+                                ).Trim()
+        $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
+    }
     
-
     #dust for debugging, doent get printed during normal execution
     Write-Verbose $testrailFeedbacktext
 
@@ -749,11 +824,13 @@ Function Test-InstalledAppAndFeatureVersions {
     $OSValidationConfig = Import-OSValidatonConfig
     $TempImageStoreRootDir = $OSValidationConfig.pathToOSValidationTempImageStore
     $filenameSuffixTimestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
-    [string]$fileToUpload = Join-Path $TempImageStoreRootDir "ALL_INSTALLED_APPS__$($filenameSuffixTimestamp).txt"
-    Get-WmiObject -Class Win32_InstalledWin32Program | Select-Object Name, Version | Out-File -FilePath $fileToUpload
-    [string[]]$allFilesToUpload = [string[]]@( $fileToUpload )
+    [string]$installedappsfileToUploadPath = Join-Path $TempImageStoreRootDir "ALL_INSTALLED_APPS__$($filenameSuffixTimestamp).txt"
+    Get-WmiObject -Class Win32_InstalledWin32Program | Select-Object Name, Version | Out-File -FilePath $installedappsfileToUploadPath
+    [string]$installedFeaturesFileToUploadPath = Join-Path $TempImageStoreRootDir "ALL_INSTALLED_FEATURES__$($filenameSuffixTimestamp).txt"
+    $installedWindowsCapabilityPSObjects | Select-Object Name, State | Format-Table | Out-File -FilePath $installedFeaturesFileToUploadPath
+    [string[]]$allFilesToUpload = [string[]]@( $installedappsfileToUploadPath, $installedFeaturesFileToUploadPath )
 
-    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -FormatMessageWithMonoSpaceFont -pathToImageArr $allFilesToUpload
+    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $allFilesToUpload
 }
 
 

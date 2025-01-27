@@ -139,6 +139,7 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
     except Exception as error:
         logging.error("An error occured when trying to communicate with TestRail API: " + str(error))
         input("Failed getting/creating testrail API call. Exiting script. Press enter to exit...")
+        
         exit()
 
     # Run the windows validation functions for startup and windows sections
@@ -350,6 +351,8 @@ if __name__ == "__main__":
     except Exception as error:
         logging.error("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")
-        exit()
+    finally:
+        logging.info("Uploading logs to testrail...")
+        logContent = logger.read_log_file()
     input("Press Enter to exit...")
     exit()

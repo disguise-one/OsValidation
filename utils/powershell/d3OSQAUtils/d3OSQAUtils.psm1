@@ -125,7 +125,8 @@ function Get-DeviceManagerDevicePropertiesScreenShotsAsSingleImage {
     #Get list of existing rundll32 processes
     [int[]]$existingRunDLL32ProcessIDs = [int[]]( ( Get-Process | Where {$_.Name -like "rundll32"} ).Id )
     # open device manager device properties screen for specified device
-    & rundll32.exe devmgr.dll,DeviceProperties_RunDLL /MachineName "" /DeviceId "$($DeviceHardwareId)"
+    $process = Start-Process -FilePath "rundll32.exe" -Verb RunAs -ArgumentList @( "devmgr.dll", "DeviceProperties_RunDLL","/MachineName `"`"","/DeviceID","`"$($DeviceHardwareId)`"" )
+    Write-Host ( $process | Format-List * | Out-String ).Trim() -ForegroundColor Green
     #Get list of new rundll32 processes
     [int[]]$newRunDLL32ProcessIDs = [int[]]( ( Get-Process | Where {$_.Name -like "rundll32"} ).Id )
     #Find newly created process
@@ -276,6 +277,16 @@ function Join-BitmapObjectArrayToSingleBitmap {
 function Format-ResultsOutput{
     param(
         [Parameter(Mandatory=$true)]
+        [ValidateSet(
+            "PASSED",
+            "BLOCKED",
+            "UNTESTED",
+            "RETEST",
+            "FAILED",
+            "DONE",
+            "WON'T TEST",
+            "REQUIRE MORE INFO"
+        )]
         [String]$Result,
         [Parameter(Mandatory=$true)]
         [String]$Message,
@@ -286,18 +297,18 @@ function Format-ResultsOutput{
         [Parameter(Mandatory=$false)]
         [Switch]$ReturnAsPowershellObject,
         [Parameter(Mandatory=$false)]
-        [Switch]$FormatMessageWithMonoSpaceFont
+        [Switch]$DontFormatMessageWithMonoSpaceFont
     )
 
     if($pathToImage){
         $pathToImageArr = @($pathToImage)
     }
 
-    if( $Message -and $FormatMessageWithMonoSpaceFont ) {
+    if( $Message -and ( -not $DontFormatMessageWithMonoSpaceFont ) ) {
         #Prefix all lines of output with 4 spaces to create a code block - See this Testrail article for how this works
         #https://support.testrail.com/hc/en-us/articles/7770931349780-Editor-formatting-reference#code-and-preformatted-text-0-1
         $Message = "    " + ( ( $Message -split "`n" ) -join "`n    " )
-        $Message = $Message.replace( "`n    `n", "`n     `n" ) #replace 4 spaces with 5 spaces to force empty lines to slow as empty lines so line spacing doesnt get all squashed
+        $Message = $Message.replace( "`n    `n", "`n    _`n" ) #replace 4 spaces with 5 spaces to force empty lines to slow as empty lines so line spacing doesnt get all squashed
     }
 
     $resultsObject = [PSCustomObject]@{

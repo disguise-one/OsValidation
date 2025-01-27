@@ -425,7 +425,7 @@ Function Test-DeviceManagerDriverVersions {
     #dust for debugging, doent get printed during normal execution
     Write-Verbose $testrailFeedbacktext
 
-    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -FormatMessageWithMonoSpaceFont -pathToImageArr $imageArray
+    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $imageArray
 }
 
 # Export only the functions using PowerShell standard verb-noun naming.

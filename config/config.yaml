@@ -76,7 +76,6 @@ adapter_names:
 windows_settings:
   windows_allowed_apps:
     - "mspaint"
-    - "mip"
     # - "SnippingTool"  I cant find the processs name for this. You can start the process with Start-Process SnippingTool.exe, but it is renamed something else
     - "psr"
     - "notepad"
@@ -142,3 +141,4 @@ driver_choco_package_handle_automated_device_manager_version_test_blocklist: #ca
 
 driver_choco_package_handle_automated_installed_apps_and_features_version_test_blocklist: #can put choco package handles here or shared package changes (pref shared if it exists)
     - "vcredist140" #This one doesnt show up in installed apps so we skip this check - the other vcredist ones all do at time of writing
+    - "Mellanox WinMFT" #This is the SHared external handle, this doesn't appear in installed apps
