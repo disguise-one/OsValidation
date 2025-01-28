@@ -167,9 +167,15 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             device_testing.check_deltacast_capture_cards,
             device_testing.check_bluefish_capture_cards,
             device_testing.check_audio_cards,
-            device_testing.check_device_manager_driver_versions
+            device_testing.check_device_manager_driver_versions,
+            device_testing.check_problem_devices
         ]
         failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
+
+        d3_interaction_functions = [
+            d3_interaction.check_projects_reg_paths
+        ]
+        failedUploads += run_validation_group(d3_interaction_functions, "d3 Interaction", OSValidationDict, runRequrestResponse, client, "d3 Interaction Tests")       
 
     elif TestType == "USB" or "R20":
         general_iso_functions = [
@@ -179,7 +185,8 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             general_ISO_Tests.check_logs_present_remote,
             general_ISO_Tests.check_net_adapter_names,
             general_ISO_Tests.check_audio_cards,
-            general_ISO_Tests.check_D_drive
+            general_ISO_Tests.check_D_drive,
+            general_ISO_Tests.check_problem_devices
         ]
         failedUploads += run_validation_group(general_iso_functions, "ISO Tests", OSValidationDict, runRequrestResponse, client, "ISO Tests")
 
@@ -198,60 +205,13 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
     logging.info("Finished Testing and Uploading.")
     logging.info(f"YOUR TEST RAIL TEST RUN ID IS: {str(runRequrestResponse["id"])}")
 
-
     
+    return
 
 
-    # else:
-    #     # Load the configuration from YAML file
-    #     devices.load_config()
 
-    #     # Group of functions for validating Windows settings
-    #     windows_validation_functions = [
-    #         windows_settings.check_taskbar_icons,
-    #         windows_settings.check_start_menu_tiles,
-    #         windows_settings.check_app_menu_contents,
-    #         windows_settings.check_windows_licensing,
-    #         windows_settings.check_windows_background_color,
-    #         windows_settings.check_machine_name,
-    #         windows_settings.check_notifications_disabled,
-    #         windows_settings.check_sticky_keys_disabled,
-    #         windows_settings.check_windows_firewall_disabled
-    #     ]
-    #     windowsTests = run_validation_group(windows_validation_functions, "Windows Settings", TestRunTitle)
 
-    #     # Group of functions for file handling validation
-    #     file_handling_functions = [
-    #         file_handling.check_system_failure_checkboxes,
-    #         file_handling.check_dump_file_path,
-    #         file_handling.check_file
-    #     ]
-    #     run_validation_group(file_handling_functions, "File Handling")
-
-    #     # Group of functions for device validation
-    #     device_validation_functions = [
-    #         devices.check_general_devices,
-    #         devices.detect_gpu_brand,
-    #         devices.check_gpu_devices,
-    #         devices.check_network_devices,
-    #         devices.check_capture_card_devices,
-    #         devices.check_audio_devices,
-    #         devices.check_audio_card_management,
-    #         devices.check_media_drives,
-    #         devices.check_raid_tool
-    #     ]
-    #     run_validation_group(device_validation_functions, "Devices Validation")
-
-    #     # Group of functions for d3 interaction validation
-    #     d3_interaction_functions = [
-    #         d3_interaction.check_d3_project,
-    #         d3_interaction.check_d3_manager_help,
-    #         d3_interaction.check_d3_licences,
-    #         d3_interaction.check_OS_image_version
-    #     ]
-    #     run_validation_group(d3_interaction_functions, "d3 Interaction")
-    
-
+# Entry point of the code \/. It then calls main(), which is above /\
 if __name__ == "__main__":
     print("+===============================================+")
     print("|                 OS Validation                 |")
@@ -264,7 +224,7 @@ if __name__ == "__main__":
         from utils import testrail
         import subprocess, json, re, base64, sys, select, urllib, time
         import numpy as np
-        from utils import windows_settings, useful_utilities, device_testing, general_ISO_Tests
+        from utils import windows_settings, useful_utilities, device_testing, general_ISO_Tests, d3_interaction
     except Exception as error:
         print("Error Importing dependancies. Error: " + str(error))
         input("Press Enter to exit...")
@@ -352,7 +312,6 @@ if __name__ == "__main__":
         logging.error("An error occured when running main(): " + str(error))
         input("Exiting script. Press enter to exit...")
     finally:
-        logging.info("Uploading logs to testrail...")
-        logContent = logger.read_log_file()
-    input("Press Enter to exit...")
+        input("Press Enter to exit...")
+    
     exit()

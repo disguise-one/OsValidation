@@ -4,8 +4,7 @@ from utils import useful_utilities
 
 def check_projects_reg_paths(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-ProjectsRegPath"
-    registryPathTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754268", "RenderStream - Check registry path is correct")
-    return registryPathTestCase
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "754268", "RenderStream - Check registry path is correct") #821233
 
 def check_logs_present_local(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-ReImageLogs"
@@ -36,3 +35,8 @@ def check_D_drive(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-DDrive"
     driveTestCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754280", "Check for media drive")
     return driveTestCase
+
+def check_problem_devices(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-ProblemDevices"
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "754272", "Device Manager Inspection")
+    return testCase

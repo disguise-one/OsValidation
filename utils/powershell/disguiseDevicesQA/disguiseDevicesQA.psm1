@@ -428,6 +428,109 @@ Function Test-DeviceManagerDriverVersions {
     Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $imageArray
 }
 
+Function Test-ProblemDevices {
+    param(        
+    )
+    $ProblemDevices = Get-PnpDevice | Where-Object {( $_.Status -eq "ERROR") -or 
+                                                    ( $_.Status -eq "DEGRADED") }
+
+    $problemDevices = @()
+    $allowedDevices = @()
+    $allowedDeviceAndWarning =  @()
+    $index = 0
+    foreach($allowedDevice in ( Get-ConfigYAMLAsPSObject ).devices_settings.allowed_warning_on_device){
+        $allowedDeviceAndWarning += [PSCustomObject]@{
+            Name = $allowedDevice[0]
+            AllowedCode = $allowedDevice[1]
+        }
+    }
+    
+
+    # Loop through all the devices that are error or degraded status
+    foreach($device in $ProblemDevices){
+        # Loop through all the devices that are allowed to be in a status
+        foreach($deviceAndWarning in $allowedDeviceAndWarning){
+            # If the name matches one of the device lists
+            if($device.FriendlyName -match $deviceAndWarning[0]){
+                # We check if its status is matching what it should be
+                if ($device.status -match $deviceAndWarning[1]){
+                    $allowedDevices += [PSCustomObject]@{
+                        Index = $Index
+                        Name = $device.FriendlyName
+                        DeviceClass = $device.Class
+                        Status = $device.Status
+                        Note = ""
+                    }
+                } #if it doesnt match what we allow
+                else{
+                    $problemDevices += [PSCustomObject]@{
+                        Index = $Index
+                        Name = $device.FriendlyName
+                        DeviceClass = $device.Class
+                        Status = $device.Status
+                        Note = "We allow a status of [$($deviceAndWarning[1])] for this device, however it doesn't appear to have this"
+                    }
+                }
+
+            } #An unauthorised problem device
+            else{
+                $problemDevices += [PSCustomObject]@{
+                    Index = $Index
+                    Name = $device.FriendlyName
+                    DeviceClass = $device.Class
+                    Status = $device.Status
+                    Note = "This device does not appear in the list of allowed problem devices"
+                }
+            }
+        }
+
+        $index++
+    }
+
+    $overallPass = if($problemDevices){"FAILED"}else{"PASSED"}
+    $message = @"
+-------------------------------------------------------------
+                Device Manager Inspection
+-------------------------------------------------------------
+Test Result:                            REPLACEMENT1
+Number of Problem Devices:              REPLACEMENT2
+
+Problem Devices: 
+
+"@
+    $message = $message -replace "REPLACEMENT1", $overallPass
+    $message = $message -replace "REPLACEMENT2", $problemDevices.Length
+
+    if($problemDevices){
+        $message += $problemDevices | Format-Table | Out-String
+    }else{
+        $message += "   -   No devices reporting as [ERROR] or [DEGRADED]"
+    }
+
+
+    # Creating the allowed device table
+    $message += @"
+    
+Allowed Devices and Status:
+
+"@
+    if($allowedDevices){
+        $message += $allowedDevices | Format-Table | Out-String
+    }else{
+        $Message += "   -   No devices found that match the allow-list"
+    }
+    
+
+    # Creating the config value table for easy readin
+    $message += @"
+
+Allow-List to be Checked Against:
+    
+"@
+    $message += $allowedDeviceAndWarning | Format-Table | Out-String
+    return Format-ResultsOutput -Result $overallPass -Message $message
+}
+
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.

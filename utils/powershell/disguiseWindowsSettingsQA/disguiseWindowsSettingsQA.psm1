@@ -431,34 +431,76 @@ function Test-ChromeBookmarks{
     # Getting the required bookmarks from the config yaml
     $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
     $requiredBookmarkURLs = $testConfig.Windows_settings.chrome_bookmark_urls | Sort-Object -Descending
+    $requiredBookmarkURLs = $requiredBookmarkURLs -replace "^(http(s?):\/\/)", ""
     $actualBookmarks = $Value.roots.bookmark_bar.children.url | Sort-Object -Descending
 
     # Setting up the missing bookmarks STRING
     $missingBookmarks = ""
     $requiredBookmarkList = ""
 
-    # Loop through each actual bookmarks, and seeing if it doesnt appear in the required bookmarks
-    for($index = 0; $index -lt $actualBookmarks.length; $index++){
-        if(-not($actualBookmarks[$index] -in $requiredBookmarkURLs)){
-            if(-not $missingBookmarks){
-                $missingBookmarks = "Missing Bookmarks: $($actualBookmarks[$index])"
-            }else{
-                $missingBookmarks += ", $($actualBookmarks[$index])"
-            }
-
-            if(-not $requiredBookmarkList){
-                $requiredBookmarkList = "Required Bookmarks: $($requiredBookmarkURLs[$index])"
-            }else{
-                $requiredBookmarkList += ", $($requiredBookmarkURLs[$index])"
+    # Loop through each actual bookmarks, and seeing if it appears in the required bookmarks
+    $testedBookmarks = @()
+    $index = 0
+    foreach($bookmark in $actualBookmarks){
+        $bookmark = $bookmark -replace "^(http(s?):\/\/)", ""
+        $urlIsInBookmark = $false
+        foreach($requiredBookmarkURL in $requiredBookmarkURLs){
+            if(($bookmark -eq $requiredBookmarkURL) -or ($bookmark -eq ($requiredBookmarkURL+"en"))){
+                $urlIsInBookmark = $true
+                break
             }
         }
+        $testedBookmarks += [PSCustomObject]@{
+            Index = $index
+            BookmarkURL = $bookmark
+            IsAnAllowedBookmark = $urlIsInBookmark
+        }
+        $index ++
     }
 
+
+    # for($index = 0; $index -lt $actualBookmarks.length; $index++){
+    #     if(-not($actualBookmarks[$index] -in $requiredBookmarkURLs) -or -not()){
+    #         if(-not $missingBookmarks){
+    #             $missingBookmarks = "Missing Bookmarks: $($actualBookmarks[$index])"
+    #         }else{
+    #             $missingBookmarks += ", $($actualBookmarks[$index])"
+    #         }
+
+    #         if(-not $requiredBookmarkList){
+    #             $requiredBookmarkList = "Required Bookmarks: $($requiredBookmarkURLs[$index])"
+    #         }else{
+    #             $requiredBookmarkList += ", $($requiredBookmarkURLs[$index])"
+    #         }
+    #     }
+    # }
+
+    $message = @"
+-------------------------------------------------------------
+            Google Chrome Bookmark Results
+-------------------------------------------------------------
+Test Result:                            REPLACEMENT1
+Number of Bookmarks:                    REPLACEMENT2
+Bookmarks List Matched Against:         REPLACEMENT3
+Bookmarks: 
+
+"@
+
+    $passFail = if($testedBookmarks.IsAnAllowedBookmark -contains $false){"FAILED"}else{"PASSED"}
+    $message = $message -replace "REPLACEMENT1", ("["+$passFail+"]")
+    $message = $message -replace "REPLACEMENT2", ($testedBookmarks.Length)
+    $message = $message -replace "REPLACEMENT3", $requiredBookmarkURLs
+    $message += $testedBookmarks | Format-Table | Out-String
+    $message += @"
+
+
+END OF RESULT LOG
+"@
     # Check if the missing bookmarks are filled
-    if($missingBookmarks){
-        return Format-ResultsOutput -Result "FAILED" -Message "Missing chrome bookmarks: [$($missingBookmarks). Required Bookmarks: [$($requiredBookmarkList)]. If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
+    if($testedBookmarks.IsAnAllowedBookmark -contains $false){
+        return Format-ResultsOutput -Result "FAILED" -Message $message
     }else{
-        return Format-ResultsOutput -Result "PASSED" -Message "Only whitelisted bookmarks present"
+        return Format-ResultsOutput -Result "PASSED" -Message $message
     }
 }
 
@@ -480,17 +522,35 @@ function Test-ChromeHomepage {
         return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
-    $actualHomeURL = $Value.session.startup_urls
+    $actualHomeURL = ($Value.session.startup_urls).Replace("https:\\","").Replace("http:\\","")
 
     # Getting the homepage URL
     $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
-    $homeURL = $testConfig.Windows_settings.chrome_home_url
+    $homeURL = ($testConfig.Windows_settings.chrome_home_url).Replace("https:\\", "").Replace("http:\\", "")
 
-    if($actualHomeURL -eq $homeURL){
-        return Format-ResultsOutput -Result "PASSED" -Message "Chrome homepage is correct. homepage URL is: [$($actualHomeURL)]"
+    $Message = @"
+-------------------------------------------------------------
+                Google Chrome Homepage Results
+-------------------------------------------------------------
+Test Result:                            REPLACEMENT1
+Homepage URL:                           REPLACEMENT2
+URL Must Be:                            REPLACEMENT3
+
+
+END OF LOG
+
+"@
+
+    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"en"))){
+        $passed = "PASSED"
     }else{
-        return Format-ResultsOutput -Result "FAILED" -Message "Missing chrome homepage: [$($homeURL). Actual homepage is: [$($actualHomeURL)]. If you believe this is in error, please update config found at [OSValidation/config/config.yaml]"
+        $passed = "FAILED"
     }
+
+    $Message = $Message -replace "REPLACEMENT1", $passed
+    $Message = $Message -replace "REPLACEMENT2", $actualHomeURL
+    $Message = $Message -replace "REPLACEMENT3", "$($homeURL) or $($homeURL)en"
+    return Format-ResultsOutput -Result $passed -Message $Message
 
 }
 
@@ -751,7 +811,7 @@ Function Test-InstalledAppAndFeatureVersions {
     $testrailFeedbacktext += "`n`n----------------------------------------------------------------------------------"
 
     #if some of the tests came back blocked then the user needs to add some hardware ids to OSBuilder
-    [PSCustomObject[]]$noAppFoundResults = ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { $_.noOfFoundInstalledApps -eq 0 } )
+    [PSCustomObject[]]$noAppFoundResults = ( $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { ( $_.noOfFoundInstalledApps -eq 0 ) -and $_.noOfFoundInstalledFeatures -eq 0 } )
     if( $noAppFoundResults ) {
         #Add the overall results table to the testrail resposne text
         $testrailFeedbacktext += "`n`nNO APPS OR FEATURES COULD BE FOUND ON YOUR SYSTEM MATCHING THE FOLLOWING PACKAGES:`nIf the App is istalled uder a different name then Please edit the [Installed App or Feature name] of the Appropriate Choco Package records in OSBuilder then try again.`n`n"
@@ -791,7 +851,7 @@ Function Test-InstalledAppAndFeatureVersions {
     }
 
     #Add a detailed breakdown where multiple matyches were found
-    [PSCustomObject[]]$packagesWithMultipleMatches = $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { ( $_.noOfFoundInstalledApps ) -ge 1 -or ( ( $_.noOfFoundInstalledApps -eq 0 ) -and $_.noOfFoundInstalledFeatures -ge 1 ) -or ( $_.noOfFoundAppVersions -ge 1 ) }
+    [PSCustomObject[]]$packagesWithMultipleMatches = $allPackagesWithInstalledAppOrFeatureNameSet | Where-Object { ( $_.noOfFoundInstalledApps -ge 1 ) -or ( ( $_.noOfFoundInstalledApps -eq 0 ) -and ( $_.noOfFoundInstalledFeatures -ge 1 ) ) -or ( $_.noOfFoundAppVersions -ge 1 ) }
     if( $packagesWithMultipleMatches.Length ) {
         $testrailFeedbacktext += "`n`nTHE FOLLOWING TABLE LISTS A DETAILED BREAKDOWN OF EACH TEST WHERE MULTIPLE APPS/APP VERSIONS/FEATURES MATCHED`n** This doesnt mean the test has failed, but If possible, please edit the App/Feature names in OSBuilder to make these more specific **:`n`n"
         $testrailFeedbacktext += ( $packagesWithMultipleMatches | 

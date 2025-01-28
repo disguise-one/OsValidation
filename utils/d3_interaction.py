@@ -1,3 +1,12 @@
+import subprocess
+from utils.test_case_classes import TestCase
+from utils import useful_utilities
+
+def check_projects_reg_paths(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-ProjectsRegPath"
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "821233", "Check d3 Folder registry paths are correct: d3 projects folder & RenderStream projects folder") #821233
+
+"""
 import os
 import subprocess
 from pywinauto.application import Application
@@ -129,3 +138,4 @@ def check_d3_manager_tests():
     main_win.set_focus()
     close_button = main_win.child_window(title="Close", control_type="Button")
     close_button.click()
+"""

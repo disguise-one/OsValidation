@@ -262,7 +262,7 @@ function Test-MachineName{
 
     $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
 
-    $requiredMachineName = $modelConfig.biosHandle
+    $requiredMachineName = $modelConfig.osHardwarePlatforms[0]
 
     # pull the host name
     try{

@@ -32,3 +32,6 @@ def check_device_manager_driver_versions(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-DeviceManagerDriverVersions -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
     return useful_utilities.RunPowershellAndParseOutput(powershellComand, "374755", "Driver Validation via Device Manager")
 
+def check_problem_devices(OSValidationDict):
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseDevicesQA -Force -DisableNameChecking; Test-ProblemDevices"
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "374742", "Device Manager Inspection")
