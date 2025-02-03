@@ -6,6 +6,14 @@ def check_projects_reg_paths(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-ProjectsRegPath"
     return useful_utilities.RunPowershellAndParseOutput(powershellComand, "821233", "Check d3 Folder registry paths are correct: d3 projects folder & RenderStream projects folder") #821233
 
+def check_os_name_wimtestsuite(OSValidationDict): #Same as below but different test id
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-OSName -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "374766", "OS Version")
+
+def check_os_name_redisguisetestsuite(OSValidationDict): #Same as above but different test id
+    powershellComand = "import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-OSName -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
+    return useful_utilities.RunPowershellAndParseOutput(powershellComand, "754265", "OS Version") 
+
 """
 import os
 import subprocess

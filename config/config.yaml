@@ -73,6 +73,14 @@ adapter_names:
   AdapterNames100G:
     - ""
 
+registry_keys:
+  oem_information_folder: "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OEMInformation"
+  oem_information_entries:
+    os_release: "OSRelease"
+
+d3Service_api_endpoints:
+  all_d3_servers_os_info: "127.0.0.1/api/service/system/osinfo"
+
 windows_settings:
   windows_allowed_apps:
     - "mspaint"

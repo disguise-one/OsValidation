@@ -3,7 +3,6 @@ $d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
 Import-Module $d3ModelConfigPath -Force
 Import-Module $d3OSQAUtilsPath -Force
 
-
 function Test-ProjectsRegPath{
     param(
     )
@@ -262,7 +261,7 @@ function Test-MachineName{
 
     $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
 
-    $requiredMachineName = $modelConfig.osHardwarePlatforms[0]
+    [string[]]$possibleMachineNames = [string[]]$modelConfig.CodeMeterProductCodes.d3Model
 
     # pull the host name
     try{
@@ -276,8 +275,8 @@ function Test-MachineName{
     
     $machineName = $machineName -split '-'
 
-    if($machineName[0] -ne $requiredMachineName){
-        $message += "Machine name is not the same: Actual [$($machineName[0])], Required [$($requiredMachineName)]. "
+    if( -not( $machineName[0] -in $possibleMachineNames ) ){
+        $message += "Machine Model is not listed as a [CodeMeterProductCodes].[d3Model] Value in the Model Config file in disguisedpower: Actual Model Taken From Server Name [$($machineName[0])], Possible Values from Config File [$( $requiredMachineName -join ']/[' )]. "
         $result = "FAILED"
     }
 
@@ -296,6 +295,120 @@ function Test-MachineName{
     }
 }
 
+function Test-OSName{
+    param(        
+        [Parameter(Mandatory=$true)]
+        [String]$TestRunTitle,
+        [Parameter(Mandatory=$true)]
+        [String]$pathToOSValidationTemplate
+    )
+
+    # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it
+    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    if( -not $OSValidationTemplatePSObject ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+    }
+
+    $correctOSImageName = $OSValidationTemplatePSObject.RedisguiseName
+    if( -not $correctOSImageName ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The Powershell OS Validation Template file [$( $pathToOSValidationTemplate )] does not contain a value for [RedisguiseName], cannot complete Test"
+    }
+
+    #Load and Validate Config YAML 
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+    if( -not $configYAMLPSObject ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] could not be loaded. Either the file must be missing or it contains invalid YAML formatting."
+    }
+
+    #Fetch and validate the values we need from the config file
+    $reg_location_oem_information_folder = $configYAMLPSObject.registry_keys.oem_information_folder
+    $reg_location_os_release_entry = $configYAMLPSObject.registry_keys.oem_information_entries.os_release
+    $d3Service_api_all_d3_servers_os_info_endpoint = $configYAMLPSObject.d3Service_api_endpoints.all_d3_servers_os_info
+    if( -not $reg_location_oem_information_folder ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] did not contain an entry for [registry_keys.oem_information_folder], cannot complete test"
+        
+    }
+    if( -not $reg_location_os_release_entry ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] did not contain an entry for [registry_keys.oem_information_entries.os_release], cannot complete test"
+    }
+    if( -not $d3Service_api_all_d3_servers_os_info_endpoint ) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] did not contain an entry for [d3Service_api_endpoints.all_d3_servers_os_info], cannot complete test"
+    }
+
+
+    # Test the OS Name from Regsitry
+    $osReleaseNameFromRegistry = $null
+    $d3Message_RegCheck = "AN UNKNOWN ERROR OCCURED TRING TO CHECK THE REGISTRY FOR THE OS NAME"
+    $d3testResult_RegCheck = "BLOCKED"
+    try{
+        $osReleaseNameFromRegistry = Get-ItemPropertyValue -Path $reg_location_oem_information_folder -Name $reg_location_os_release_entry
+        $d3Message_RegCheck = "Registry entry [$reg_location_os_release_entry] in registry location [$reg_location_oem_information_folder] contains [$osReleaseNameFromRegistry]. Expected OS Image Name: [$($correctOSImageName)]"
+        if( $osReleaseNameFromRegistry -eq $correctOSImageName ){
+            $d3testResult_RegCheck = "PASSED"
+        }else{
+            $d3testResult_RegCheck = "FAILED"
+        }
+    }catch{
+        $d3Message_RegCheck = "Cannot find registry entry [$reg_location_os_release_entry] in registry location [$reg_location_oem_information_folder]. "
+        $d3testResult_RegCheck = "FAILED"
+    }
+
+
+    # Test the OS Name from d3Service APIs
+    $d3Message_APICheck = "AN UNKNOWN ERROR OCCURED TRING TO CHECK d3Service APIs FOR THE OS NAME"
+    $d3testResult_APICheck = "BLOCKED"
+    #Call API
+    Write-Host
+    Write-Host "Calling d3Service API Endpoint [$d3Service_api_all_d3_servers_os_info_endpoint]"
+    try{ 
+        $response = Invoke-RestMethod $d3Service_api_all_d3_servers_os_info_endpoint -Method 'GET'
+    }
+    catch {
+        if( $_.Exception.StatusCode -eq "NotFound" ) {
+            Write-Error "API STATUS CODE: [404 (Not Found)] - This Means the [api/service_internal/system/reimageserver] Endpoint cannot be found`n - Does the Actor Server have a Reimaging 2.0 Compatible Version of d3 Installed?"
+        }
+        else {
+            Write-Error $_.Exception.Message
+            $_
+        }
+        Write-Host
+    }
+    
+    #Feed Back API Response to user 
+    if( $response -and $response.status -and ( $response.status.code -eq 200 -or $response.status.code -eq 0 ) ) {
+        $machineName = HOSTNAME.EXE
+        $machinesOnNetwork = $response.result
+        $thisMachine = $machinesOnNetwork | Where-Object{ $_.hostname -eq $machineName }
+        if( $thisMachine ) {
+            $thisMachinesAPIImageVersion = $thisMachine.imageVersion
+            $d3Message_APICheck = "d3Service API with Endpoint [$d3Service_api_all_d3_servers_os_info_endpoint] returned and imageVersion of [$thisMachinesAPIImageVersion] for machine [$($thisMachine.hostname)]. Expected OS Image Name: [$($correctOSImageName)]"
+            if( $osReleaseNameFromRegistry -eq $correctOSImageName ){
+                $d3testResult_APICheck = "PASSED"
+            }else{
+                $d3testResult_APICheck = "FAILED"
+            }
+        }
+        else {
+            $d3Message_APICheck = "d3Service API with Endpoint [$d3Service_api_all_d3_servers_os_info_endpoint] returned a list of machines on the network: [$( $machinesOnNetwork.hostname -join ']/[' )] which DOES NOT include this servers machine name [$machineName]. Could not ascertain imageVersion from d3Service"
+            $d3testResult_APICheck = "BLOCKED"
+        }
+    }
+    else {
+        $d3Message_APICheck = "d3Service API with Endpoint [$d3Service_api_all_d3_servers_os_info_endpoint] failed to run on this machine.`n`nThe API Response WAS:`n$( $response | ConvertTo-Json )"
+        $d3testResult_APICheck = "BLOCKED"
+    }
+    
+    # Return the success code if it has reached the end
+    $overallResult = "BLOCKED"
+    if( ( $d3testResult_RegCheck -eq "FAILED" ) -or ( $d3testResult_APICheck -eq "FAILED" ) ) {
+        $overallResult = "FAILED"
+    }
+    if( ( $d3testResult_RegCheck -eq "PASSED" ) -and ( $d3testResult_APICheck -eq "PASSED" ) ) {
+        $overallResult = "PASSED"
+    }
+    return Format-ResultsOutput -Result $overallResult -Message "REGISTRY CHECK: $($d3testResult_RegCheck) - $($d3Message_RegCheck)`n`n`nD3SERVICE CHECK: $($d3testResult_APICheck) - $($d3Message_APICheck)"
+}
+
 function Test-DDrive{
     param()
 
@@ -312,6 +425,21 @@ function Test-DDrive{
     }
 
 }
+
+function Test-CWindowsDisguisedpowerGetsDeleted{
+    param()
+
+    $disguisedPowerExists = Test-Path "C:\Windows\disguisedpower"
+
+    if($disguisedPowerExists){
+        return Format-ResultsOutput -Result "FAILED" -Message "Directory [C:\Windows\disguisedpower] WAS found on C: Drive"
+        
+    }else{
+        return Format-ResultsOutput -Result "PASSED" -Message "Directory [C:\Windows\disguisedpower] WAS NOT found on C: Drive"
+    }
+}
+
+
 
 
 # Export only the functions using PowerShell standard verb-noun naming.

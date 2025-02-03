@@ -1,0 +1,92 @@
+{
+  "runtimeTarget": {
+    "name": ".NETStandard,Version=v2.1/",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETStandard,Version=v2.1": {},
+    ".NETStandard,Version=v2.1/": {
+      "PowerShellYamlSerializer/1.0.0": {
+        "dependencies": {
+          "Microsoft.PowerShell.5.1.ReferenceAssemblies": "1.0.0",
+          "System.Management": "8.0.0",
+          "YamlDotNet": "16.0.0"
+        },
+        "runtime": {
+          "PowerShellYamlSerializer.dll": {}
+        }
+      },
+      "Microsoft.PowerShell.5.1.ReferenceAssemblies/1.0.0": {
+        "runtime": {
+          "lib/net461/System.Management.Automation.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "System.CodeDom/8.0.0": {
+        "runtime": {
+          "lib/netstandard2.0/System.CodeDom.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "System.Management/8.0.0": {
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.Management.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "YamlDotNet/16.0.0": {
+        "runtime": {
+          "lib/netstandard2.1/YamlDotNet.dll": {
+            "assemblyVersion": "16.0.0.0",
+            "fileVersion": "16.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "PowerShellYamlSerializer/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.PowerShell.5.1.ReferenceAssemblies/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ty38eq/iyDtNIBaoe1o5MGepGR9Al3uDUwchVikbrJwH277JC8br3DVlaIgc996UyCe+J07Fubq9OByCc8CWEw==",
+      "path": "microsoft.powershell.5.1.referenceassemblies/1.0.0",
+      "hashPath": "microsoft.powershell.5.1.referenceassemblies.1.0.0.nupkg.sha512"
+    },
+    "System.CodeDom/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WTlRjL6KWIMr/pAaq3rYqh0TJlzpouaQ/W1eelssHgtlwHAH25jXTkUphTYx9HaIIf7XA6qs/0+YhtLEQRkJ+Q==",
+      "path": "system.codedom/8.0.0",
+      "hashPath": "system.codedom.8.0.0.nupkg.sha512"
+    },
+    "System.Management/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA==",
+      "path": "system.management/8.0.0",
+      "hashPath": "system.management.8.0.0.nupkg.sha512"
+    },
+    "YamlDotNet/16.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kZ4jR5ltFhnjaUqK9x81zXRIUTH4PTXTTEmJDNQdkDLQhcv+2Nl19r0dCSvPW1mstOYBfXTnjdieRbUO6gHMDw==",
+      "path": "yamldotnet/16.0.0",
+      "hashPath": "yamldotnet.16.0.0.nupkg.sha512"
+    }
+  }
+}

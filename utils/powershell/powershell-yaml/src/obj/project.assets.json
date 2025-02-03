@@ -1,0 +1,388 @@
+{
+  "version": 3,
+  "targets": {
+    ".NETFramework,Version=v4.7": {
+      "Microsoft.PowerShell.5.1.ReferenceAssemblies/1.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net461/System.Management.Automation.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net461/System.Management.Automation.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net462/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net462/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net462/_._": {}
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "frameworkAssemblies": [
+          "System.Management"
+        ],
+        "compile": {
+          "lib/net462/_._": {}
+        },
+        "runtime": {
+          "lib/net462/_._": {}
+        }
+      },
+      "YamlDotNet/16.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net47/YamlDotNet.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net47/YamlDotNet.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    },
+    ".NETStandard,Version=v2.1": {
+      "Microsoft.PowerShell.5.1.ReferenceAssemblies/1.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net461/System.Management.Automation.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net461/System.Management.Automation.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "System.CodeDom/8.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.CodeDom.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "System.Management/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.CodeDom": "8.0.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/System.Management.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "YamlDotNet/16.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.1/YamlDotNet.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.1/YamlDotNet.dll": {
+            "related": ".xml"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Microsoft.PowerShell.5.1.ReferenceAssemblies/1.0.0": {
+      "sha512": "ty38eq/iyDtNIBaoe1o5MGepGR9Al3uDUwchVikbrJwH277JC8br3DVlaIgc996UyCe+J07Fubq9OByCc8CWEw==",
+      "type": "package",
+      "path": "microsoft.powershell.5.1.referenceassemblies/1.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net461/Microsoft.Management.Infrastructure.CimCmdlets.dll",
+        "lib/net461/Microsoft.Management.Infrastructure.Native.dll",
+        "lib/net461/Microsoft.Management.Infrastructure.dll",
+        "lib/net461/Microsoft.PowerShell.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Activities.xml",
+        "lib/net461/Microsoft.PowerShell.Commands.Diagnostics.dll",
+        "lib/net461/Microsoft.PowerShell.Commands.Management.dll",
+        "lib/net461/Microsoft.PowerShell.Commands.Management.xml",
+        "lib/net461/Microsoft.PowerShell.Commands.Utility.dll",
+        "lib/net461/Microsoft.PowerShell.Commands.Utility.xml",
+        "lib/net461/Microsoft.PowerShell.ConsoleHost.dll",
+        "lib/net461/Microsoft.PowerShell.ConsoleHost.xml",
+        "lib/net461/Microsoft.PowerShell.Core.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Core.Activities.xml",
+        "lib/net461/Microsoft.PowerShell.Diagnostics.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Diagnostics.Activities.xml",
+        "lib/net461/Microsoft.PowerShell.Editor.dll",
+        "lib/net461/Microsoft.PowerShell.GPowerShell.dll",
+        "lib/net461/Microsoft.PowerShell.GPowerShell.xml",
+        "lib/net461/Microsoft.PowerShell.GraphicalHost.dll",
+        "lib/net461/Microsoft.PowerShell.GraphicalHost.xml",
+        "lib/net461/Microsoft.PowerShell.ISECommon.dll",
+        "lib/net461/Microsoft.PowerShell.ISECommon.xml",
+        "lib/net461/Microsoft.PowerShell.Management.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Management.Activities.xml",
+        "lib/net461/Microsoft.PowerShell.PSReadLine.xml",
+        "lib/net461/Microsoft.PowerShell.Security.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Security.Activities.xml",
+        "lib/net461/Microsoft.PowerShell.Security.dll",
+        "lib/net461/Microsoft.PowerShell.Security.xml",
+        "lib/net461/Microsoft.PowerShell.Utility.Activities.dll",
+        "lib/net461/Microsoft.PowerShell.Utility.Activities.xml",
+        "lib/net461/Microsoft.Powershell.PSReadline.dll",
+        "lib/net461/Microsoft.Powershell.Workflow.ServiceCore.dll",
+        "lib/net461/Microsoft.Powershell.Workflow.ServiceCore.xml",
+        "lib/net461/System.Management.Automation.dll",
+        "lib/net461/System.Management.Automation.xml",
+        "microsoft.powershell.5.1.referenceassemblies.1.0.0.nupkg.sha512",
+        "microsoft.powershell.5.1.referenceassemblies.nuspec"
+      ]
+    },
+    "System.CodeDom/8.0.0": {
+      "sha512": "WTlRjL6KWIMr/pAaq3rYqh0TJlzpouaQ/W1eelssHgtlwHAH25jXTkUphTYx9HaIIf7XA6qs/0+YhtLEQRkJ+Q==",
+      "type": "package",
+      "path": "system.codedom/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.CodeDom.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.CodeDom.targets",
+        "lib/net462/System.CodeDom.dll",
+        "lib/net462/System.CodeDom.xml",
+        "lib/net6.0/System.CodeDom.dll",
+        "lib/net6.0/System.CodeDom.xml",
+        "lib/net7.0/System.CodeDom.dll",
+        "lib/net7.0/System.CodeDom.xml",
+        "lib/net8.0/System.CodeDom.dll",
+        "lib/net8.0/System.CodeDom.xml",
+        "lib/netstandard2.0/System.CodeDom.dll",
+        "lib/netstandard2.0/System.CodeDom.xml",
+        "system.codedom.8.0.0.nupkg.sha512",
+        "system.codedom.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Management/8.0.0": {
+      "sha512": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA==",
+      "type": "package",
+      "path": "system.management/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Management.targets",
+        "lib/net462/_._",
+        "lib/net6.0/System.Management.dll",
+        "lib/net6.0/System.Management.xml",
+        "lib/net7.0/System.Management.dll",
+        "lib/net7.0/System.Management.xml",
+        "lib/net8.0/System.Management.dll",
+        "lib/net8.0/System.Management.xml",
+        "lib/netstandard2.0/System.Management.dll",
+        "lib/netstandard2.0/System.Management.xml",
+        "runtimes/win/lib/net6.0/System.Management.dll",
+        "runtimes/win/lib/net6.0/System.Management.xml",
+        "runtimes/win/lib/net7.0/System.Management.dll",
+        "runtimes/win/lib/net7.0/System.Management.xml",
+        "runtimes/win/lib/net8.0/System.Management.dll",
+        "runtimes/win/lib/net8.0/System.Management.xml",
+        "system.management.8.0.0.nupkg.sha512",
+        "system.management.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "YamlDotNet/16.0.0": {
+      "sha512": "kZ4jR5ltFhnjaUqK9x81zXRIUTH4PTXTTEmJDNQdkDLQhcv+2Nl19r0dCSvPW1mstOYBfXTnjdieRbUO6gHMDw==",
+      "type": "package",
+      "path": "yamldotnet/16.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "README.md",
+        "images/yamldotnet.png",
+        "lib/net47/YamlDotNet.dll",
+        "lib/net47/YamlDotNet.xml",
+        "lib/net6.0/YamlDotNet.dll",
+        "lib/net6.0/YamlDotNet.xml",
+        "lib/net8.0/YamlDotNet.dll",
+        "lib/net8.0/YamlDotNet.xml",
+        "lib/netstandard2.0/YamlDotNet.dll",
+        "lib/netstandard2.0/YamlDotNet.xml",
+        "lib/netstandard2.1/YamlDotNet.dll",
+        "lib/netstandard2.1/YamlDotNet.xml",
+        "yamldotnet.16.0.0.nupkg.sha512",
+        "yamldotnet.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    ".NETFramework,Version=v4.7": [
+      "Microsoft.PowerShell.5.1.ReferenceAssemblies >= 1.0.0",
+      "System.Management >= 8.0.0",
+      "YamlDotNet >= 16.0.0"
+    ],
+    ".NETStandard,Version=v2.1": [
+      "Microsoft.PowerShell.5.1.ReferenceAssemblies >= 1.0.0",
+      "System.Management >= 8.0.0",
+      "YamlDotNet >= 16.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\john.milner\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "\\\\10.100.110.110\\d3_Technologies\\SystemsIntegration\\OSValidation\\utils\\powershell\\powershell-yaml\\src\\PowerShellYamlSerializer.csproj",
+      "projectName": "PowerShellYamlSerializer",
+      "projectPath": "\\\\10.100.110.110\\d3_Technologies\\SystemsIntegration\\OSValidation\\utils\\powershell\\powershell-yaml\\src\\PowerShellYamlSerializer.csproj",
+      "packagesPath": "C:\\Users\\john.milner\\.nuget\\packages\\",
+      "outputPath": "\\\\10.100.110.110\\d3_Technologies\\SystemsIntegration\\OSValidation\\utils\\powershell\\powershell-yaml\\src\\obj\\",
+      "projectStyle": "PackageReference",
+      "crossTargeting": true,
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\john.milner\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net47",
+        "netstandard2.1"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net47": {
+          "targetAlias": "net47",
+          "projectReferences": {}
+        },
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.100"
+    },
+    "frameworks": {
+      "net47": {
+        "targetAlias": "net47",
+        "dependencies": {
+          "Microsoft.PowerShell.5.1.ReferenceAssemblies": {
+            "target": "Package",
+            "version": "[1.0.0, )"
+          },
+          "System.Management": {
+            "target": "Package",
+            "version": "[8.0.0, )"
+          },
+          "YamlDotNet": {
+            "target": "Package",
+            "version": "[16.0.0, )"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101\\RuntimeIdentifierGraph.json"
+      },
+      "netstandard2.1": {
+        "targetAlias": "netstandard2.1",
+        "dependencies": {
+          "Microsoft.PowerShell.5.1.ReferenceAssemblies": {
+            "target": "Package",
+            "version": "[1.0.0, )"
+          },
+          "System.Management": {
+            "target": "Package",
+            "version": "[8.0.0, )"
+          },
+          "YamlDotNet": {
+            "target": "Package",
+            "version": "[16.0.0, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "NETStandard.Library": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.101\\RuntimeIdentifierGraph.json"
+      }
+    }
+  },
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Microsoft.PowerShell.5.1.ReferenceAssemblies 1.0.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework '.NETStandard,Version=v2.1'. This package may not be fully compatible with your project.",
+      "libraryId": "Microsoft.PowerShell.5.1.ReferenceAssemblies",
+      "targetGraphs": [
+        ".NETStandard,Version=v2.1"
+      ]
+    }
+  ]
+}

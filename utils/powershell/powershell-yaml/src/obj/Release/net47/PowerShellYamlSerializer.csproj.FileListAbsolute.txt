@@ -1,0 +1,14 @@
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\net47\PowerShellYamlSerializer.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\net47\PowerShellYamlSerializer.pdb
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\net47\System.Management.Automation.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\net47\System.CodeDom.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\net47\YamlDotNet.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.csproj.AssemblyReference.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.GeneratedMSBuildEditorConfig.editorconfig
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.AssemblyInfoInputs.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.AssemblyInfo.cs
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.csproj.CoreCompileInputs.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.sourcelink.json
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShe.995CF98A.Up2Date
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\net47\PowerShellYamlSerializer.pdb

@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = PowerShellYamlSerializer
+build_property.ProjectDir = \\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml\src\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 

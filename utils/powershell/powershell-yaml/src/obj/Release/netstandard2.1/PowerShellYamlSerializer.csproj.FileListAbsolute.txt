@@ -1,0 +1,11 @@
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\netstandard2.1\PowerShellYamlSerializer.deps.json
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\netstandard2.1\PowerShellYamlSerializer.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\bin\Release\netstandard2.1\PowerShellYamlSerializer.pdb
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.csproj.AssemblyReference.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.GeneratedMSBuildEditorConfig.editorconfig
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.AssemblyInfoInputs.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.AssemblyInfo.cs
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.csproj.CoreCompileInputs.cache
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.sourcelink.json
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.dll
+\\10.100.110.110\d3_Technologies\SystemsIntegration\OSValidation\utils\powershell\powershell-yaml-0.4.11\src\obj\Release\netstandard2.1\PowerShellYamlSerializer.pdb

@@ -1,4 +1,5 @@
 /notes
+.venv/** 
 /.idea/OsValidation.iml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/inspectionProfiles/Project_Default.xml
@@ -10,4 +11,5 @@
 /config/config_backup.yaml
 config/UserCredentials.local.json
 temp/StartMenuLayout.xml
-utils/__pycache__/*
+/utils/__pycache__/**
+*.DS_Store

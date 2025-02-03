@@ -173,7 +173,8 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
         failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 
         d3_interaction_functions = [
-            d3_interaction.check_projects_reg_paths
+            d3_interaction.check_projects_reg_paths,
+            d3_interaction.check_os_name_wimtestsuite
         ]
         failedUploads += run_validation_group(d3_interaction_functions, "d3 Interaction", OSValidationDict, runRequrestResponse, client, "d3 Interaction Tests")       
 
@@ -186,10 +187,15 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             general_ISO_Tests.check_net_adapter_names,
             general_ISO_Tests.check_audio_cards,
             general_ISO_Tests.check_D_drive,
-            general_ISO_Tests.check_problem_devices
+            general_ISO_Tests.check_problem_devices,
+            general_ISO_Tests.check_c_windows_disguisedpower_gets_deleted
         ]
         failedUploads += run_validation_group(general_iso_functions, "ISO Tests", OSValidationDict, runRequrestResponse, client, "ISO Tests")
 
+        d3_interaction_functions = [
+            d3_interaction.check_os_name_redisguisetestsuite
+        ]
+        failedUploads += run_validation_group(d3_interaction_functions, "d3 Interaction", OSValidationDict, runRequrestResponse, client, "d3 Interaction Tests")  
     
     if(failedUploads):
         logging.info("==================================Failed Uploads=====================================")
