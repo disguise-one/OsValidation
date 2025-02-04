@@ -135,7 +135,7 @@ devices_settings:
     - "blueinfo"
 
   allowed_warning_on_device:
-    - ["Windows Basic Display Adapter", "Error"]
+    - ["Microsoft Basic Display Adapter", "Error"]
 
 driver_choco_package_handle_automated_device_manager_version_test_blocklist: #can put choco package handles here or shared package changes (pref shared if it exists)
     - "NVIDIA_Driver"      #This is the SHared external handle which covers both nvidia and nvidia_feature - we dont test for nvidia version through device manager - only nvidia control panel

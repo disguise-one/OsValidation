@@ -248,7 +248,7 @@ Function Test-DeviceManagerDriverVersions {
     # Dot-Source the ps1 file into a powershell object variable
     $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
-        Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
     }
 
     # Get Config YAML as PS Object
@@ -425,17 +425,19 @@ Function Test-DeviceManagerDriverVersions {
     #dust for debugging, doent get printed during normal execution
     Write-Verbose $testrailFeedbacktext
 
-    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $imageArray
+    return Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $imageArray
 }
 
 Function Test-ProblemDevices {
     param(        
     )
-    $ProblemDevices = Get-PnpDevice | Where-Object {( $_.Status -eq "ERROR") -or 
-                                                    ( $_.Status -eq "DEGRADED") }
+    $ProblemPNPDevices = Get-PnpDevice | Where-Object  { ( $_.Status -eq "ERROR") -or #this is the same check as ConfigManagerErrorCode but we're just being super cautious here
+                                                      ( $_.Status -eq "DEGRADED") -or
+                                                      ( ( [int]($_.ConfigManagerErrorCode) -ne 0 ) -and ( [int]($_.ConfigManagerErrorCode) -ne 45 ) ) #0 = working, 45 = virtual device (not physical component) both of which are allowed statuses
+                                                    } 
 
-    $problemDevices = @()
-    $allowedDevices = @()
+    $problemDevices = [PSCustomObject[]]@()
+    $allowedDevices = [PSCustomObject[]]@()
     $allowedDeviceAndWarning =  @()
     $index = 0
     foreach($allowedDevice in ( Get-ConfigYAMLAsPSObject ).devices_settings.allowed_warning_on_device){
@@ -447,39 +449,35 @@ Function Test-ProblemDevices {
     
 
     # Loop through all the devices that are error or degraded status
-    foreach($device in $ProblemDevices){
-        # Loop through all the devices that are allowed to be in a status
-        foreach($deviceAndWarning in $allowedDeviceAndWarning){
-            # If the name matches one of the device lists
-            if($device.FriendlyName -match $deviceAndWarning[0]){
-                # We check if its status is matching what it should be
-                if ($device.status -match $deviceAndWarning[1]){
-                    $allowedDevices += [PSCustomObject]@{
-                        Index = $Index
-                        Name = $device.FriendlyName
-                        DeviceClass = $device.Class
-                        Status = $device.Status
-                        Note = ""
-                    }
-                } #if it doesnt match what we allow
-                else{
-                    $problemDevices += [PSCustomObject]@{
-                        Index = $Index
-                        Name = $device.FriendlyName
-                        DeviceClass = $device.Class
-                        Status = $device.Status
-                        Note = "We allow a status of [$($deviceAndWarning[1])] for this device, however it doesn't appear to have this"
-                    }
-                }
+    foreach($device in $ProblemPNPDevices){
 
-            } #An unauthorised problem device
-            else{
+        #Is there a full match by name and status in the config file
+        [PSCustomObject[]]$fullyMatchingWhitelistEntries = [PSCustomObject[]]( $allowedDeviceAndWarning | Where-Object { ( $device.FriendlyName -eq $_.Name ) -and ( $device.Status -eq $deviceAndWarning.AllowedCode ) } )
+        if( $fullyMatchingWhitelistEntries.Length ) {
+            $allowedDevices += [PSCustomObject]@{
+                Name = $device.FriendlyName
+                DeviceClass = $device.Class
+                Status = $device.Status
+                Note = ""
+            }
+        }
+        else{
+            [PSCustomObject[]]$partiallyMatchingWhitelistEntries = [PSCustomObject[]]( $allowedDeviceAndWarning | Where-Object { ( $device.FriendlyName -eq $_.Name ) } )
+            if( $partiallyMatchingWhitelistEntries.Length ) {
                 $problemDevices += [PSCustomObject]@{
-                    Index = $Index
                     Name = $device.FriendlyName
                     DeviceClass = $device.Class
                     Status = $device.Status
-                    Note = "This device does not appear in the list of allowed problem devices"
+                    Note = "In the [config.yaml] Config file, We allow a status of [$( $fullyMatchingWhitelistEntries.Status -join ']/[' )] for device [$($device.FriendlyName)], however its actual status is $( $device.Status )"
+                }
+            }
+            else{
+                #An unauthorised problem device - not in the whitelist at all
+                $problemDevices += [PSCustomObject]@{
+                    Name = $device.FriendlyName
+                    DeviceClass = $device.Class
+                    Status = $device.Status
+                    Note = "[$( $device.FriendlyName )] (which has a Status of [$( $device.Status )]) does not appear in the list of allowed problem devices in the [config.yaml] Config file"
                 }
             }
         }
@@ -489,46 +487,77 @@ Function Test-ProblemDevices {
 
     $overallPass = if($problemDevices){"FAILED"}else{"PASSED"}
     $message = @"
--------------------------------------------------------------
-                Device Manager Inspection
--------------------------------------------------------------
+---------------------------------------------------------------------
+                     Device Manager Inspection
+---------------------------------------------------------------------
 Test Result:                            REPLACEMENT1
 Number of Problem Devices:              REPLACEMENT2
 
-Problem Devices: 
+------------------------------------------------
+Disallowed Problem Devices: 
+------------------------------------------------
 
 "@
     $message = $message -replace "REPLACEMENT1", $overallPass
-    $message = $message -replace "REPLACEMENT2", $problemDevices.Length
+    $problemDevicesTally = "$( $allowedDevices.Length + $allowedDevices.Length ) ($($problemDevices.Length) Disallowed / $($allowedDevices.Length) Allowed)"
+    $message = $message -replace "REPLACEMENT2", $problemDevicesTally
 
     if($problemDevices){
-        $message += $problemDevices | Format-Table | Out-String
+        $message += ( $problemDevices | Format-List * | Out-String ).Trim()
     }else{
-        $message += "   -   No devices reporting as [ERROR] or [DEGRADED]"
+        $message += " - No devices reporting as [ERROR] or [DEGRADED]"
     }
 
 
     # Creating the allowed device table
     $message += @"
-    
-Allowed Devices and Status:
+
+
+------------------------------------------------
+Allowed Devices and Status (in Allowlist):
+------------------------------------------------
 
 "@
     if($allowedDevices){
-        $message += $allowedDevices | Format-Table | Out-String
+        $message += ( $allowedDevices | Format-Table | Out-String ).Trim()
     }else{
-        $Message += "   -   No devices found that match the allow-list"
+        $Message += " - No devices found that match the allow-list"
     }
     
 
     # Creating the config value table for easy readin
     $message += @"
 
+
+------------------------------------------------
 Allow-List to be Checked Against:
-    
+------------------------------------------------
 "@
     $message += $allowedDeviceAndWarning | Format-Table | Out-String
-    return Format-ResultsOutput -Result $overallPass -Message $message
+
+
+    #Finally, export a full list of devices to upload as an attachment as evidence
+    #get temp filename and path
+    $OSValidationConfig = Import-OSValidatonConfig
+    $TempImageStoreRootDir = $OSValidationConfig.pathToOSValidationTempImageStore
+    $filenameSuffixTimestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    [string]$deviceHealthfileToUploadPath = Join-Path $TempImageStoreRootDir "ALL_DEVICES_HEALTH__$($filenameSuffixTimestamp).txt"
+    #generate query and stip answer out to file
+    $allPNPDevices = [PSCustomObject]( Get-PNPDevice )
+    foreach( $device in $allPNPDevices ) {
+        $stateOfDevice = if( $device.Status -eq "Unknown" -and [int]( $device.ConfigManagerErrorCode -eq 45 ) ) { "Virtual" } else { $device.Status }
+        $device | Add-Member -MemberType NoteProperty -Name "State" -Value $stateOfDevice
+    }
+    $allPNPDevices |
+        Sort-Object -Property @{Expression = "Class"; Descending = $false}, @{Expression = "Name"; Descending = $false} |
+        Select-Object Class, Name, State |
+        Out-File -FilePath $deviceHealthfileToUploadPath
+
+    [string[]]$allFilesToUpload = [string[]]@( $deviceHealthfileToUploadPath )
+
+    #Return results and path to attchment
+    return $message
+    return Format-ResultsOutput -Result $overallPass -Message $message -pathToImageArr $allFilesToUpload
 }
 
 # Export only the functions using PowerShell standard verb-noun naming.

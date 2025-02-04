@@ -685,7 +685,7 @@ Function Test-InstalledAppAndFeatureVersions {
     # Dot-Source the ps1 file into a powershell object variable
     $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
-        Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
     }
 
     # Get Config YAML as PS Object
@@ -890,7 +890,7 @@ Function Test-InstalledAppAndFeatureVersions {
     $installedWindowsCapabilityPSObjects | Select-Object Name, State | Format-Table | Out-File -FilePath $installedFeaturesFileToUploadPath
     [string[]]$allFilesToUpload = [string[]]@( $installedappsfileToUploadPath, $installedFeaturesFileToUploadPath )
 
-    Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $allFilesToUpload
+    return Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $allFilesToUpload
 }
 
 
