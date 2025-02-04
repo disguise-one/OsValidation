@@ -304,12 +304,40 @@ function Format-ResultsOutput{
         $pathToImageArr = @($pathToImage)
     }
 
-    if( $Message -and ( -not $DontFormatMessageWithMonoSpaceFont ) ) {
+    #convert message to an array of lines, process each line, then convert back to a string
+    $Message = $Message.Replace( "`r`n", "`n" )
+    [string[]]$MessageArray = ( $Message -split "`n" )
+    if( $MessageArray -and ( -not $DontFormatMessageWithMonoSpaceFont ) ) {
         #Prefix all lines of output with 4 spaces to create a code block - See this Testrail article for how this works
         #https://support.testrail.com/hc/en-us/articles/7770931349780-Editor-formatting-reference#code-and-preformatted-text-0-1
-        $Message = "    " + ( ( $Message -split "`n" ) -join "`n    " )
-        $Message = $Message.replace( "`n    `n", "`n    _`n" ) #replace 4 spaces with 5 spaces to force empty lines to slow as empty lines so line spacing doesnt get all squashed
+        for ($i = 0; $i -lt ([string[]]$MessageArray).Length; $i++) {
+            if( $MessageArray[$i].Trim() ) {
+                $MessageArray[$i] = "    " + $MessageArray[$i] #all lines prefixed by 4 spaces show in monospace font
+            }
+            else {
+                $MessageArray[$i] = "    ``" #blank lines dont show so we put a ` character (still prefixed with 4 spaces) to make the blank line show
+            }
+        }
+
     }
+    #join back into a single string with newline chars
+    [string]$Message = ( ([string[]]$MessageArray) -join "`r`n" )
+    if( $MessageArray -and ( -not $DontFormatMessageWithMonoSpaceFont ) ) {
+        #now add row of dashes at start otherwise the first line doesnt display correctly
+        [string]$Message = "    ---------------------------------------------------`r`n$($Message)"
+    }
+
+    
+
+    # if( $Message -and ( -not $DontFormatMessageWithMonoSpaceFont ) ) {
+    #     #Prefix all lines of output with 4 spaces to create a code block - See this Testrail article for how this works
+    #     #https://support.testrail.com/hc/en-us/articles/7770931349780-Editor-formatting-reference#code-and-preformatted-text-0-1
+    #     if( $Message.Trim().StartsWith( "`n" ) ) {
+    #         $Message = "_" + $Message
+    #     }
+    #     $Message = "    " + ( ( $Message -split "`n" ) -join "`n    " )
+    #     $Message = $Message.replace( "`n    `n", "`n    _`n" ) #replace 4 spaces with 5 spaces to force empty lines to slow as empty lines so line spacing doesnt get all squashed
+    # }
 
     $resultsObject = [PSCustomObject]@{
         OverallResult = $Result
@@ -317,8 +345,6 @@ function Format-ResultsOutput{
         PathToImage = $pathToImageArr
     }
     
-
-
     if($ReturnAsPowershellObject){
         return $resultsObject
     }else{

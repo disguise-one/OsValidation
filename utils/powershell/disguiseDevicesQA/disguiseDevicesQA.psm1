@@ -452,7 +452,7 @@ Function Test-ProblemDevices {
     foreach($device in $ProblemPNPDevices){
 
         #Is there a full match by name and status in the config file
-        [PSCustomObject[]]$fullyMatchingWhitelistEntries = [PSCustomObject[]]( $allowedDeviceAndWarning | Where-Object { ( $device.FriendlyName -eq $_.Name ) -and ( $device.Status -eq $deviceAndWarning.AllowedCode ) } )
+        [PSCustomObject[]]$fullyMatchingWhitelistEntries = [PSCustomObject[]]( $allowedDeviceAndWarning | Where-Object { ( $device.FriendlyName -eq $_.Name ) -and ( $device.Status -eq $_.AllowedCode ) } )
         if( $fullyMatchingWhitelistEntries.Length ) {
             $allowedDevices += [PSCustomObject]@{
                 Name = $device.FriendlyName
@@ -468,7 +468,7 @@ Function Test-ProblemDevices {
                     Name = $device.FriendlyName
                     DeviceClass = $device.Class
                     Status = $device.Status
-                    Note = "In the [config.yaml] Config file, We allow a status of [$( $fullyMatchingWhitelistEntries.Status -join ']/[' )] for device [$($device.FriendlyName)], however its actual status is $( $device.Status )"
+                    Note = "In the [config.yaml] Config file, We allow a status of [$( $partiallyMatchingWhitelistEntries.Status -join ']/[' )] for device [$($device.FriendlyName)], however its actual status is [$( $device.Status )]"
                 }
             }
             else{
@@ -487,6 +487,7 @@ Function Test-ProblemDevices {
 
     $overallPass = if($problemDevices){"FAILED"}else{"PASSED"}
     $message = @"
+
 ---------------------------------------------------------------------
                      Device Manager Inspection
 ---------------------------------------------------------------------
@@ -499,13 +500,13 @@ Disallowed Problem Devices:
 
 "@
     $message = $message -replace "REPLACEMENT1", $overallPass
-    $problemDevicesTally = "$( $allowedDevices.Length + $allowedDevices.Length ) ($($problemDevices.Length) Disallowed / $($allowedDevices.Length) Allowed)"
+    $problemDevicesTally = "$( $problemDevices.Length + $allowedDevices.Length ) ($($problemDevices.Length) Disallowed / $($allowedDevices.Length) Allowed)"
     $message = $message -replace "REPLACEMENT2", $problemDevicesTally
 
     if($problemDevices){
         $message += ( $problemDevices | Format-List * | Out-String ).Trim()
     }else{
-        $message += " - No devices reporting as [ERROR] or [DEGRADED]"
+        $message += " - No Un-Allowlisted devices reporting as [ERROR] or [DEGRADED]"
     }
 
 
@@ -542,7 +543,7 @@ Allow-List to be Checked Against:
     $TempImageStoreRootDir = $OSValidationConfig.pathToOSValidationTempImageStore
     $filenameSuffixTimestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
     [string]$deviceHealthfileToUploadPath = Join-Path $TempImageStoreRootDir "ALL_DEVICES_HEALTH__$($filenameSuffixTimestamp).txt"
-    #generate query and stip answer out to file
+    #generate query and spit answer out to file
     $allPNPDevices = [PSCustomObject]( Get-PNPDevice )
     foreach( $device in $allPNPDevices ) {
         $stateOfDevice = if( $device.Status -eq "Unknown" -and [int]( $device.ConfigManagerErrorCode -eq 45 ) ) { "Virtual" } else { $device.Status }
@@ -553,10 +554,10 @@ Allow-List to be Checked Against:
         Select-Object Class, Name, State |
         Out-File -FilePath $deviceHealthfileToUploadPath
 
-    [string[]]$allFilesToUpload = [string[]]@( $deviceHealthfileToUploadPath )
+    
 
     #Return results and path to attchment
-    return $message
+    [string[]]$allFilesToUpload = [string[]]@( $deviceHealthfileToUploadPath )
     return Format-ResultsOutput -Result $overallPass -Message $message -pathToImageArr $allFilesToUpload
 }
 
