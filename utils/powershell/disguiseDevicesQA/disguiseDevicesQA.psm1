@@ -487,7 +487,7 @@ Function Test-ProblemDevices {
 
     $overallPass = if($problemDevices){"FAILED"}else{"PASSED"}
     $message = @"
-
+    
 ---------------------------------------------------------------------
                      Device Manager Inspection
 ---------------------------------------------------------------------

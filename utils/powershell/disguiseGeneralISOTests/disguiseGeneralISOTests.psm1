@@ -24,19 +24,19 @@ function Test-ProjectsRegPath{
     }
     
 
-    # Test the Renderstream projects file
+    # Test the Renderstream projects file THIS TEST IS UNFINISHED
     try{
-        $RenderstreamprojectsFolder = Get-ItemProperty -Path "HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite" -Name "d3 Projects Folder"
-        if($RenderstreamprojectsFolder."d3 Projects Folder" -eq "D:\d3 Projects"){
-            $RenderstreamMessage = "Registry entry [d3 Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite] contains [$($RenderstreamprojectsFolder."d3 Projects Folder")]"
+        $RenderstreamprojectsFolder = Get-ItemProperty -Path "HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite" -Name "Renderstream Projects Folder"
+        if($RenderstreamprojectsFolder."Renderstream Projects Folder" -eq "D:\RenderStream Projects"){
+            $RenderstreamMessage = "Registry entry [Renderstream Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite] contains [$($RenderstreamprojectsFolder."Renderstream Projects Folder")]"
             $RenderstreamtestResult = "PASSED"
         }else{
-            $RenderstreamMessage = "Registry entry [d3 Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite] contains [$($RenderstreamprojectsFolder."d3 Projects Folder")]. This is incorrect and must contain [D:\d3 Projects]"
+            $RenderstreamMessage = "Registry entry [Renderstream Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite] contains [$($RenderstreamprojectsFolder."Renderstream Projects Folder")]. This is incorrect and must contain [D:\RenderStream Projects]"
             $RenderstreamtestResult = "FAILED"
             Write-Host "$($RenderstreamtestResult). $($RenderstreamMessage)"
         }
     }catch{
-        $RenderstreamMessage = "Cannot find registry entry [d3 Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite]. "
+        $RenderstreamMessage = "Cannot find registry entry [Renderstream Projects Folder] in registry location [HKCU:\SOFTWARE\d3 Technologies\d3 Production Suite]. "
         $RenderstreamtestResult = "FAILED"
         Write-Host "$($RenderstreamtestResult). $($RenderstreamMessage)"
     }
