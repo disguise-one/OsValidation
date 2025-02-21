@@ -71,6 +71,15 @@ def check_installed_app_versions(OSValidationDict):
     powershellComand = "import-Module .\\utils\\powershell\\disguiseWindowsSettingsQA -Force -DisableNameChecking; Test-InstalledAppAndFeatureVersions -TestRunTitle \"" + OSValidationDict["TestRunTitle"].replace("`", "``" ).replace( "\"", "`\"" ) + "\" -pathToOSValidationTemplate \"" + OSValidationDict["OSValidationTemplatePath"].replace("`", "``" ).replace( "\"", "`\"" ) + "\""
     return useful_utilities.RunPowershellAndParseOutput(powershellComand, "795477", "Installed Apps and Features Version Check")
 
+def check_c_windows_disguisedpower_gets_deleted(OSValidationDict):
+    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-CWindowsDisguisedpowerGetsDeleted"
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "840094", "C:\Windows\disguisedpower gets deleted")
+    return testCase
+
+def check_reg_values_for_right_click_context_menu_win_11_only(OSValidationDict):
+    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-RightClickContextMenuRegistryValues"
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "843435", "C:\Windows\disguisedpower gets deleted")
+    return testCase
 
 #===================================================================================
 # LEGACY CODE. This is depreciated but may be useful in the future? so I wont delete it but it has now been removed

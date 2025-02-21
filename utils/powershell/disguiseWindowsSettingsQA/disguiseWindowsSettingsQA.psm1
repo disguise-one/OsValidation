@@ -320,7 +320,7 @@ function Test-ChromeHistory{
     $whitelistedHistoryPages = (Get-ConfigYAMLAsPSObject).Windows_settings.chrome_allowed_history
     $fullHistory = @()
     $index = 0
-    $numberOfNonAllowedPages = $history.data.length
+    $numberOfNonAllowedPages = @($history.data).Count
     foreach($site in $history.data){
         $HasSiteBeenFoundOnce = $False
         foreach($whitelistedSite in $whitelistedHistoryPages){
@@ -363,7 +363,7 @@ function Test-ChromeHistory{
     -------------------------------------------------------------
     Test Result:                            REPLACEMENT2
     Number of non-allowed web pages:        REPLACEMENT1
-    Web-Page URLs: 
+    All Web-Page URLs: 
 
 "@
     $message = $message -replace "REPLACEMENT1", "[$($numberOfNonAllowedPages)]"
@@ -522,11 +522,11 @@ function Test-ChromeHomepage {
         return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
-    $actualHomeURL = ($Value.session.startup_urls).Replace("https:\\","").Replace("http:\\","")
+    $actualHomeURL = ($Value.session.startup_urls).Replace("https:\\","").Replace("http:\\","").trim('\')
 
     # Getting the homepage URL
     $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
-    $homeURL = ($testConfig.Windows_settings.chrome_home_url).Replace("https:\\", "").Replace("http:\\", "")
+    $homeURL = ($testConfig.Windows_settings.chrome_home_url).Replace("https:\\", "").Replace("http:\\", "").trim('\')
 
     $Message = @"
 -------------------------------------------------------------
@@ -541,7 +541,7 @@ END OF LOG
 
 "@
 
-    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"en"))){
+    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"\en"))){
         $passed = "PASSED"
     }else{
         $passed = "FAILED"
@@ -891,6 +891,36 @@ Function Test-InstalledAppAndFeatureVersions {
     [string[]]$allFilesToUpload = [string[]]@( $installedappsfileToUploadPath, $installedFeaturesFileToUploadPath )
 
     return Format-ResultsOutput -Result $overallResult -Message $testrailFeedbacktext -pathToImageArr $allFilesToUpload
+}
+
+
+function Test-RightClickContextMenuRegistryValues{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+    $windowsVersions = Get-WindowsVersionInfo
+
+    if($windowsVersions.WindowsVersion -eq 10){
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "The windows version has been detected as [$($windowsVersions.WindowsVersion)], which doesn't require this test."
+    }
+
+    $contextMenu = $null
+    $registryLocation = "HKCU:\SOFTWARE\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32"
+    try{
+        $contextMenu = Get-ItemProperty -Path $registryLocation -ErrorAction SilentlyContinue
+    }catch{
+        $contextMenu = $null
+    }
+    
+    if($contextMenu.('(Default)') -eq "" ){
+    # if( ( -not $contextMenu.('(Default)') ) -and ( -not ( $null -eq $contextMenu.('(Default)') ) ) ){
+        return Format-ResultsOutput -Result "PASSED" -Message "The registry location [$($registryLocation)] exists and contains a default value of [$($contextMenu.('(Default)'))]"
+    }else{
+        return Format-ResultsOutput -Result "FAILED" -Message "The registry location [$($registryLocation)] does not exist"
+    }
+    
+    
 }
 
 

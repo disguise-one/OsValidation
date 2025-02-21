@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PowerShellYamlSerializer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6bd897b746d92f7487ee77c5175adcf648be82f3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+54c7aae32328ce04687362d081b42d5ca4b80d95")]
 [assembly: System.Reflection.AssemblyProductAttribute("PowerShellYamlSerializer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PowerShellYamlSerializer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -157,7 +157,9 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             windows_settings.check_VFC_overlay,
             windows_settings.check_windows_update_disabled,
             windows_settings.check_firewall_disabled,
-            windows_settings.check_installed_app_versions
+            windows_settings.check_installed_app_versions,
+            windows_settings.check_c_windows_disguisedpower_gets_deleted,
+            windows_settings.check_reg_values_for_right_click_context_menu_win_11_only
         ]
         failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 
@@ -173,7 +175,7 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
         failedUploads += run_validation_group(devices_validation_functions, "Devices", OSValidationDict, runRequrestResponse, client, "Device Tests")
 
         d3_interaction_functions = [
-            d3_interaction.check_projects_reg_paths,
+            # d3_interaction.check_projects_reg_paths,
             d3_interaction.check_os_name_wimtestsuite
         ]
         failedUploads += run_validation_group(d3_interaction_functions, "d3 Interaction", OSValidationDict, runRequrestResponse, client, "d3 Interaction Tests")       

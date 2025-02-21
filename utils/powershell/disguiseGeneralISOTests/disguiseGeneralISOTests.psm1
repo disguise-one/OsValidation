@@ -427,13 +427,15 @@ function Test-DDrive{
 }
 
 function Test-CWindowsDisguisedpowerGetsDeleted{
-    param()
+    param(        
+        [Parameter(Mandatory=$false)]
+        [String]$pathToDisguisedPowerOnCDrive = "C:\Windows\disguisedpower"
+    )
 
-    $disguisedPowerExists = Test-Path "C:\Windows\disguisedpower"
+    $disguisedPowerExists = Test-Path $pathToDisguisedPowerOnCDrive
 
     if($disguisedPowerExists){
         return Format-ResultsOutput -Result "FAILED" -Message "Directory [C:\Windows\disguisedpower] WAS found on C: Drive"
-        
     }else{
         return Format-ResultsOutput -Result "PASSED" -Message "Directory [C:\Windows\disguisedpower] WAS NOT found on C: Drive"
     }
