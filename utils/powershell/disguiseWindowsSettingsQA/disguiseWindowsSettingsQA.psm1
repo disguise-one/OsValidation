@@ -923,6 +923,103 @@ function Test-RightClickContextMenuRegistryValues{
     
 }
 
+function Test-PersonalizationSettingsRegistryValues{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+    $windowsVersions = Get-WindowsVersionInfo
+    if($windowsVersions.WindowsVersion -eq 10){
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "The windows version has been detected as [$($windowsVersions.WindowsVersion)], which doesn't require this test."
+    }
+    $contextMenu = $null
+    
+    $overallResultText = ""
+    $overallResultBoolean = $true
+    
+    #Show recently added apps on Start menu
+    $registryLocation1 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+    $overallResultText += "Registry Location [$($registryLocation1)] Exists: "
+    try{
+        $contextMenu1 = Get-ItemProperty -Path $registryLocation1 -ErrorAction SilentlyContinue
+        #this line only gets run if the command above worked (which means $registryLocation1 exists)
+        $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+    }catch{
+    	#this section only gets run if the command above failed (which means $registryLocation1 does not exist)
+        $contextMenu1 = $null
+        $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+        $overallResultBoolean = $false
+    }
+    
+     #Show the most used app
+     $registryLocation2 = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+     $overallResultText += "Registry Location [$($registryLocation2)] Exists: "
+     try{
+         $contextMenu2 = Get-ItemProperty -Path $registryLocation2 -ErrorAction SilentlyContinue
+         #this line only gets run if the command above worked (which means $registryLocation1 exists)
+         $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+     }catch{
+         #this section only gets run if the command above failed (which means $registryLocation2 does not exist)
+         $contextMenu2 = $null
+         $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+         $overallResultBoolean = $false
+     }
+    
+      #check the registry values, but only if the two registry locations above exist
+      if( overallResultBoolean ) {
+    
+	    #Check HideRecentlyAddedApps = 1 from registryLocation1
+	    $overallResultText += "Registry Value [$($registryLocation1)/HideRecentlyAddedApps] is [1]: "
+	    if (($contextMenu1.('HideRecentlyAddedApps') -eq 1)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    
+	    #Check Start_TrackProgs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackProgs] is [0]: "
+	    if (($contextMenu2.('Start_TrackProgs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_TrackDocs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackDocs] is [0]: "
+	    if (($contextMenu2.('Start_TrackDocs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_IrisRecommendations = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_IrisRecommendations] is [0]: "
+	    if (($contextMenu2.('Start_IrisRecommendations') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+	    #Check Start_AccountNotifications = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_AccountNotifications] is [0]: "
+	    if (($contextMenu2.('Start_AccountNotifications') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+    
+    
+
 
 
 # Export only the functions using PowerShell standard verb-noun naming.
