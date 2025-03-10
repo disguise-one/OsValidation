@@ -160,6 +160,7 @@ def main(testRun, TestRunTitle, testrailUsername, testrailPassword, OSValidation
             windows_settings.check_installed_app_versions,
             windows_settings.check_c_windows_disguisedpower_gets_deleted,
             windows_settings.check_reg_values_for_right_click_context_menu_win_11_only
+            windows_settings.check_reg_values_for_Personalization_Settings_win_11_only
         ]
         failedUploads += run_validation_group(windows_validation_functions, "Windows Settings", OSValidationDict, runRequrestResponse, client, "Windows Tests")
 

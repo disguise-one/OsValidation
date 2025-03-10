@@ -78,9 +78,13 @@ def check_c_windows_disguisedpower_gets_deleted(OSValidationDict):
 
 def check_reg_values_for_right_click_context_menu_win_11_only(OSValidationDict):
     powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-RightClickContextMenuRegistryValues"
-    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "843435", "C:\Windows\disguisedpower gets deleted")
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "843435", "Registry key exist")
     return testCase
 
+def check_reg_values_for_personalization_settings_win_11_only(OSValidationDict):
+    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-RightClickContextMenuRegistryValues"
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "882213", "All personalization settings have been disabled")
+    return testCase
 #===================================================================================
 # LEGACY CODE. This is depreciated but may be useful in the future? so I wont delete it but it has now been removed
 #===================================================================================
