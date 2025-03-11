@@ -966,7 +966,7 @@ function Test-PersonalizationSettingsRegistryValues{
      }
     
       #check the registry values, but only if the two registry locations above exist
-      if( overallResultBoolean ) {
+      if( $overallResultBoolean ) {
     
 	    #Check HideRecentlyAddedApps = 1 from registryLocation1
 	    $overallResultText += "Registry Value [$($registryLocation1)/HideRecentlyAddedApps] is [1]: "
@@ -1017,7 +1017,56 @@ function Test-PersonalizationSettingsRegistryValues{
     $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
     return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
 }
+
+
+function Test-OptionalFeatures{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+       $overallResultText = ""
+       $overallResultBoolean = $true
     
+    #SNMP
+    try{
+        $SNMP = Get-WindowsCapability -Online | Where-Object {$_.Name -eq 'SNMP.Client~~~~0.0.1.0' -and $_.state -eq 'Installed'}
+        $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+    }catch{
+        $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+        $overallResultBoolean = $false
+    }
+    
+     #WMI SNMP
+     try{
+         $WMISNMP = Get-WindowsCapability -Online | Where-Object {$_.Name -eq 'WMI-SNMP-Provider.Client~~~~0.0.1.0' -and $_.state -eq 'Installed'}
+         $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+     }catch{
+         #this section only gets run if the command above failed (which means feature hasn't been installed)
+         $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+         $overallResultBoolean = $false
+     }
+    
+      if( [bool]$SNMP ) {
+    
+	    $overallResultText += "SNMP feature exists "
+
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        if( [bool]$WMISNMP ) {
+	    $overallResultText += "WMI SNMP exists "
+
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+
+	    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
     
 
 

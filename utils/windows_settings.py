@@ -82,8 +82,13 @@ def check_reg_values_for_right_click_context_menu_win_11_only(OSValidationDict):
     return testCase
 
 def check_reg_values_for_personalization_settings_win_11_only(OSValidationDict):
-    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-RightClickContextMenuRegistryValues"
+    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-PersonalizationSettingsRegistryValues"
     testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "882213", "All personalization settings have been disabled")
+    return testCase
+
+def check_optional_features(OSValidationDict):
+    powershellComand = "Import-Module .\\utils\\powershell\\disguiseGeneralISOTests -Force -DisableNameChecking; Test-OptionalFeatures"
+    testCase = useful_utilities.RunPowershellAndParseOutput(powershellComand, "787613", "SNMP and WMI-SNMP have been installed")
     return testCase
 #===================================================================================
 # LEGACY CODE. This is depreciated but may be useful in the future? so I wont delete it but it has now been removed
