@@ -6,10 +6,6 @@ Import-Module $d3OSQAUtilsPath -Force
 
 function Test-GraphicsCardControlPannel{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
     )
     # Importing the required modules
     $path = Format-disguiseModulePathForImport -RepoName "disguisedsec" -ModuleName "d3HardwareValidation"
@@ -54,7 +50,7 @@ function Test-GraphicsCardControlPannel{
             $returnMessage += "Note: [Desktop\NVIDIACorp.NVIDIAControlPanel] could not be removed. Please remove manually. "
         }
 
-        $nvidiaDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("NVIDIA_Driver").ToUpper()} 
+        $nvidiaDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $Global:OSValidationConfig.PathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("NVIDIA_Driver").ToUpper()} 
 
         $testValue = "PASSED"
         if(-not(Compare-Versions -Version1 $hw.gpu.DriverVersion -Version2 $nvidiaDriverTemplate.publicPackageVersion -equal)){
@@ -100,9 +96,8 @@ Function Test-CaptureCard{
         [Parameter(Mandatory=$true)]
         [String]$TestRunTitle,
         [Parameter(Mandatory=$true)]
-        [String]$CaptureCardManufacturer,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
+        [String]$CaptureCardManufacturer
+
     )
     # Inital data manipulation
     $CaptureCardManufacturer = $CaptureCardManufacturer.ToUpper()
@@ -165,7 +160,7 @@ Function Test-CaptureCard{
     }
 
     # Now we need to verify the driver version 
-    $captureDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($CaptureCardManufacturer)_Driver").ToUpper()} 
+    $captureDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $Global:OSValidationConfig.PathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($CaptureCardManufacturer)_Driver").ToUpper()} 
 
     $captureCardDriverModified = $captureCards.DriverVersion -replace 'v', ' '
 
@@ -182,9 +177,8 @@ Function Test-CaptureCard{
 Function Test-AudioCard{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
+        [String]$TestRunTitle
+
     )
     # Make sure the test is required
     if(-not (Import-ModelConfig -ReturnAsPowershellObject).usesHammerfallAudio){
@@ -205,7 +199,7 @@ Function Test-AudioCard{
     }
 
     # Get the chocolatey template for RME Audio
-    $audioTemplate = (Import-OSValidationTemplate -PathToTemplateFile $pathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($audioCard[0].Manufacturer)").ToUpper()} 
+    $audioTemplate = (Import-OSValidationTemplate -PathToTemplateFile $Global:OSValidationConfig.PathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("$($audioCard[0].Manufacturer)").ToUpper()} 
     if(-not $audioTemplate){
         Write-Error "Cannot find chocolatey package where the sharedPackageHandle matches with [$($audioCard[0].Manufacturer)]. The model specific config indicates it needs an audio card. Please check chocolatey packages to ensure it is there. Marking test as failed."
         $returnString = "Cannot find chocolatey package where the sharedPackageHandle matches with [$($audioCard[0].Manufacturer)]. The model specific config indicates it needs an audio card. Please check chocolatey packages to ensure it is there. Marking test as failed."
@@ -240,15 +234,13 @@ Function Test-AudioCard{
 Function Test-DeviceManagerDriverVersions {
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
+        [String]$TestRunTitle
     )
 
     # Dot-Source the ps1 file into a powershell object variable
-    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
-        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
     }
 
     # Get Config YAML as PS Object

@@ -298,20 +298,18 @@ function Test-MachineName{
 function Test-OSName{
     param(        
         [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
+        [String]$TestRunTitle
     )
 
     # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it
-    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
-        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
     }
 
     $correctOSImageName = $OSValidationTemplatePSObject.RedisguiseName
     if( -not $correctOSImageName ) {
-        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The Powershell OS Validation Template file [$( $pathToOSValidationTemplate )] does not contain a value for [RedisguiseName], cannot complete Test"
+        return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )] does not contain a value for [RedisguiseName], cannot complete Test"
     }
 
     #Load and Validate Config YAML 

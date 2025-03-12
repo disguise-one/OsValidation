@@ -16,8 +16,6 @@ It tests if they appear there and returns any missing apps
 #>
 function Get-AndTestWindowsTaskbarContents{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     $TaskbarPinnedContents = Get-ChildItem -Path "$env:APPDATA\\Microsoft\\Internet Explorer\\Quick Launch\\User Pinned\\TaskBar" | Select-Object -ExpandProperty Name
     # Using a traditional for loop as i need to index through the array and change values
@@ -33,7 +31,8 @@ function Get-AndTestWindowsTaskbarContents{
     $TaskbarPinnedContents = $TaskbarPinnedContents | select -Unique
 
     # Get the config file
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $allowedTaskBarApps = $testConfig.Windows_settings.taskbar_apps
 
     $MissingApps = @()
@@ -60,8 +59,6 @@ These are the default apps though, so model specific checks need to take place
 
 function Get-AndTestWindowsStartMenuContents{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     # It depends on if the machien is windows 10 or 11, on windows 10 it will be an xml. On windows 11 its a JSON file
     # Get the start layout - it has to be exported as an xml file - annoying, but oh well. We can do some handling
@@ -134,7 +131,7 @@ function Get-AndTestWindowsStartMenuContents{
         }
     }
 
-    $pathToImageStore = Get-StartMenuEvidence -TestRunTitle $TestRunTitle
+    $pathToImageStore = Get-StartMenuEvidence
     # We return blocked as there are still some manual checks the operator needs to do -> machine specific apps such as dcare are
     # not checked for
 
@@ -155,8 +152,6 @@ and then tries to open each one. If it cannot it returns the name of that one.
 #>
 function Get-AndTestWindowsAppMenuContents{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     #Set up the array to store the app names we want to check
     # psr - stepps recorder
@@ -212,8 +207,6 @@ This gathers the evidence of the startmenu so it can be uploaded. It sends a win
 
 function Get-StartMenuEvidence{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     <#
         As we cannot use more sophisticated methods to grab the screen contents (due to antivirus saying we cant), 
@@ -244,8 +237,6 @@ A function to gather if windows is licensed on this machine. There are many ways
 
 function Get-WindowsLicensingAndEvidence{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     Add-Type @"
@@ -308,8 +299,6 @@ it is clear
 
 function Test-ChromeHistory{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     # Get the history
@@ -416,8 +405,6 @@ Then parses the
 #>
 function Test-ChromeBookmarks{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     # Getting the chrome bookmarks and converting from JSON
@@ -511,8 +498,6 @@ listed in the config.yaml
 #>
 function Test-ChromeHomepage {
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     # Getting the chrome homepage and converting from JSON
@@ -557,8 +542,6 @@ END OF LOG
 # Not quite working -> maybe not a needed test as it is very easy to do by hand. 
 function Test-CtlAltDelBackgroundColor{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     
     # This checks the registry containing what should be the info, however -> it isnt always correct
@@ -578,8 +561,6 @@ it is disabled
 #>
 function Test-WindowsUpdateEnabled{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     # I thought it needed to be the computer name, however for some reason it needs to be empty to return. This works, as if you run the script on your
     # laptop, you will return a 'True' in the ServiceEnabled field
@@ -601,8 +582,6 @@ Get-VFCOverlay checks if there is a VFC card in the device manager. It only chec
 #>
 function Get-VFCOverlay{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
 
@@ -630,8 +609,6 @@ and if it is enabled it passes back which one is configured incorrectly
 #>
 function Test-WindowsFirewallDisabled{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     $FirewallSettings = Get-NetFirewallProfile
@@ -652,8 +629,6 @@ function Test-WindowsFirewallDisabled{
 
 function Test-NotificationsDisabled{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     $notifications = -1
     try{
@@ -676,16 +651,13 @@ function Test-NotificationsDisabled{
 
 Function Test-InstalledAppAndFeatureVersions {
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
-        [Parameter(Mandatory=$true)]
-        [String]$pathToOSValidationTemplate
+
     )
 
     # Dot-Source the ps1 file into a powershell object variable
-    $OSValidationTemplatePSObject = ( . $pathToOSValidationTemplate )
+    $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
-        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $pathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
+        return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Could not load the Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )]. Either the file must be missing or it contains invalid powershell code."
     }
 
     # Get Config YAML as PS Object

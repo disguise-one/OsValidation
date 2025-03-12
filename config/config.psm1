@@ -2,8 +2,8 @@ $LOCAL_CONFIG_RELATIVE_PATH         =       "local/config.local.ps1"
 $STATIC_CONFIG_RELATIVE_PATH        =       "static/config.static.ps1"
 $TESTS_CONFIG_RELATIVE_PATH         =       "tests/config.tests.ps1"
 
-$Global:OSVaidationConfig = New-Object psobject -Property @{}
-$Global:OSVaidationTests = New-Object psobject -Property @{}
+$Global:OSValidationConfig = New-Object psobject -Property @{}
+$Global:OSValidationTests = New-Object psobject -Property @{}
 
 # ===Import config values and add them to the global config variable. This is done first===
 
@@ -14,10 +14,10 @@ $ImportConfig = {
         [String]$RelativePath
     )
 
-    $ImportPath = Join-Path $PSScriptRoot -ChildPath $RelativePath
+    $ImportPath = Join-Path -Path $PSScriptRoot -ChildPath $RelativePath
 
     if(-not(Test-Path $ImportPath)){
-        Write-Error "Cannot locate the static config file at [$($ImportPath)]. This is a terminating error. Script will exit" -ErrorAction Stop
+        Write-Error "Cannot locate the config file at [$($ImportPath)]. This is a terminating error. Script will exit" -ErrorAction Stop
     }
 
     $ImportConfigContents = .$ImportPath
@@ -56,18 +56,18 @@ $SetTestRailRunObject = {
         [Parameter(Mandatory=$true)]
         [PSCustomObject]$TestRailRunObject
     )
-    $Global:OSVaidationConfig.TestRailRunObject = $TestRailRunObject
+    $Global:OSValidationConfig.TestRailRunObject = $TestRailRunObject
 }
 
 # Adding methods
-$Global:OSVaidationConfig | Add-Member -MemberType ScriptMethod -Name "ImportConfig" -Value $ImportConfig
-$Global:OSVaidationConfig | Add-Member -MemberType ScriptMethod -Name "ImportDisguisedPowerModelConfig" -Value $importDisguisedPowerModelConfig
-$Global:OSVaidationConfig | Add-Member -MemberType ScriptMethod -Name "SetTestRailRunObject" -Value $SetTestRailRunObject
+$Global:OSValidationConfig | Add-Member -MemberType ScriptMethod -Name "ImportConfig" -Value $ImportConfig
+$Global:OSValidationConfig | Add-Member -MemberType ScriptMethod -Name "ImportDisguisedPowerModelConfig" -Value $importDisguisedPowerModelConfig
+$Global:OSValidationConfig | Add-Member -MemberType ScriptMethod -Name "SetTestRailRunObject" -Value $SetTestRailRunObject
 
 # Setup of all values inside the object
 try{
-    $Global:OSVaidationConfig.ImportConfig($STATIC_CONFIG_RELATIVE_PATH)
-    $Global:OSVaidationConfig.ImportConfig($LOCAL_CONFIG_RELATIVE_PATH)
+    $Global:OSValidationConfig.ImportConfig($STATIC_CONFIG_RELATIVE_PATH)
+    $Global:OSValidationConfig.ImportConfig($LOCAL_CONFIG_RELATIVE_PATH)
 }catch{
     Write-Host
     Write-Host "There was an error  $($_.ScriptStackTrace)  during config file import.: `n`n$($_.Exception.Message) " -ForegroundColor Red
@@ -77,8 +77,16 @@ try{
 }
 
 # Instantiating more values
-$Global:OSVaidationConfig | Add-Member -MemberType NoteProperty -Name "StartingTimestamp" -Value $null
-$Global:OSVaidationConfig | Add-Member -MemberType NoteProperty -Name "TestRailRunObject" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "StartingTimestamp" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "TestRailRunObject" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "disguisedPowerPath" -Value (Join-Path -path $Global:OSValidationConfig.pathToDisguisePowerAndSecParentDir -ChildPath "\disguisedPower")
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "disguisedSecPath" -Value (Join-Path -path $Global:OSValidationConfig.pathToDisguisePowerAndSecParentDir -ChildPath "\disguisedSec")
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "TestRunType" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "TestRailAPISuiteIDBeingUsed" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "testRunTitle" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "PathToOSValidationTemplate" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "afterInternalRestore" -Value $null
+
 
 # ===============       Tests        ===============
 $Global:OSValidationTests | Add-Member -MemberType ScriptMethod -Name "ImportConfig" -Value $ImportConfig
@@ -120,3 +128,33 @@ $formatTestResultMessage = {
 }
 
 $Global:OSValidationTests | Add-Member -MemberType ScriptMethod -Name "TestResultTextToCodeLookup" -Value $TestResultTextToCodeLookup
+
+try{
+    $Global:OSValidationTests.ImportConfig($TESTS_CONFIG_RELATIVE_PATH)
+}catch{
+    Write-Host
+    Write-Host "There was an error  $($_.ScriptStackTrace) during config file import.: `n`n$($_.Exception.Message) " -ForegroundColor Red
+    Write-Host
+    Read-host "Press Enter to Exit..."
+    exit
+}
+
+try{
+    # loops through wim/usb/r20
+    foreach($TestGroup in $Global:OSValidationTests.PSObject.Properties.Name){
+        # loops through windowsTests/DeviceTests etc...
+        foreach($TestFamily in $Global:OSValidationTests.($TestGroup).get_Keys()){
+            # loops through each individual test
+            foreach($Test in $Global:OSValidationTests.($TestGroup).($TestFamily)){
+                # So the formatTestResultMessage is a method of each individual test
+                $Test | Add-Member -MemberType ScriptMethod -Name "formatTestResultMessage" -Value $formatTestResultMessage
+            }
+        }
+    }
+}catch{
+    Write-Host
+    Write-Host "There was an error  $($_.ScriptStackTrace) during config file import.: `n`n$($_.Exception.Message) " -ForegroundColor Red
+    Write-Host
+    Read-host "Press Enter to Exit..."
+    exit
+}

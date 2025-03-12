@@ -8,14 +8,15 @@ Import-Module $d3OSQAUtilsPath -Force
 function Import-ModelConfig{
     param(
         [Parameter(Mandatory=$false)]
-        [String]$PathToConfigFileFromOSValidationRoot = "disguisedpower\disguiseConfig",        
+        [String]$PathToConfigFileFromOSValidationRoot = "..\disguisedpower\disguiseConfig",        
         [Parameter(Mandatory=$false)]
         [Switch]$ReturnAsPowershellObject
     )
 
     # We modify the path as it is being executed inside the d3ModelCOnfigImporter file
-    $modifiedPath = Join-Path -Path (Import-OSValidatonConfig).pathToDisguisePowerAndSecParentDir -ChildPath $PathToConfigFileFromOSValidationRoot
+    # $modifiedPath = Join-Path -Path $Global:DisguiseConfig.pathToDisguisePowerAndSecParentDir -ChildPath $PathToConfigFileFromOSValidationRoot
     #$modifiedPath = $PathToConfigFileFromOSValidationRoot
+    $modifiedPath = Join-Path -Path $Global:OSValidationConfig.disguisedPowerPath -ChildPath "\disguiseConfig"
 
     #Import all the config files, via already established methods -> see disguisePower config for info on this
     try{
@@ -59,10 +60,8 @@ function Format-disguiseModulePathForImport{
         [String]$ModuleName
     )
 
-    $OSValidationConfigJsonFile = Import-OSValidatonConfig
-
     # first create the repo path
-    $RepoPath = Join-Path -path $OSValidationConfigJsonFile.pathToDisguisePowerAndSecParentDir -ChildPath $RepoName
+    $RepoPath = Join-Path -path $Global:DisguiseConfig.pathToDisguisePowerAndSecParentDir -ChildPath $RepoName
     if(-not(Test-Path $RepoPath)){
         Write-Error "The Repo [$($RepoName)] cannot be found at relative path [$($RepoPath)] please check it exists and ensure you are calling this function from inside a script located in [utils\powershell] or any of it's subdirectories"
         return $false

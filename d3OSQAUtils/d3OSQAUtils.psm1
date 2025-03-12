@@ -295,7 +295,7 @@ function Format-ResultsOutput{
         [Parameter(Mandatory=$false)]
         [String[]]$pathToImageArr,
         [Parameter(Mandatory=$false)]
-        [Switch]$ReturnAsPowershellObject,
+        [Switch]$DontReturnAsPowershellObject,
         [Parameter(Mandatory=$false)]
         [Switch]$DontFormatMessageWithMonoSpaceFont
     )
@@ -345,7 +345,7 @@ function Format-ResultsOutput{
         PathToImage = $pathToImageArr
     }
     
-    if($ReturnAsPowershellObject){
+    if(-not ($DontReturnAsPowershellObject)){
         return $resultsObject
     }else{
         return $resultsObject | ConvertTo-Json -Compress
@@ -365,13 +365,13 @@ function Get-WindowsVersionInfo {
 }
 
 function Get-ConfigYAMLAsPSObject {
-    $configYAMLPath = Join-Path $PSScriptRoot "..\..\..\config\config.yaml"
+    $configYAMLPath = Join-Path $PSScriptRoot "\..\config\config.yaml"
     $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     return $testConfig
 }
 
 function Import-OSValidatonConfig{
-    $OSOalidationConfigJSONPath = Join-Path $PSScriptRoot "..\..\..\config\OSvalidationConfig.json"
+    $OSOalidationConfigJSONPath = Join-Path $PSScriptRoot "..\config\OSvalidationConfig.json"
     $config = Get-Content -Path $OSOalidationConfigJSONPath | ConvertFrom-Json
     return $config
 }
