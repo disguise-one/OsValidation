@@ -20,6 +20,7 @@ function Test-GraphicsCardControlPannel{
     }catch{
         write-error("Cannot gather hardware via [Assert-Hardware]:")
         write-error($_)
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Cannot call function [ Assert-Hardware ]"
     }
     
     if($hw.gpu.Manufacturer -eq "NVIDIA"){
@@ -93,8 +94,6 @@ function Test-GraphicsCardControlPannel{
 #>
 Function Test-CaptureCard{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle,
         [Parameter(Mandatory=$true)]
         [String]$CaptureCardManufacturer
 
@@ -176,9 +175,6 @@ Function Test-CaptureCard{
 
 Function Test-AudioCard{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
-
     )
     # Make sure the test is required
     if(-not (Import-ModelConfig -ReturnAsPowershellObject).usesHammerfallAudio){
@@ -233,8 +229,6 @@ Function Test-AudioCard{
 
 Function Test-DeviceManagerDriverVersions {
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     # Dot-Source the ps1 file into a powershell object variable

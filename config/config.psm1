@@ -25,7 +25,13 @@ $ImportConfig = {
         if(-not ($ImportConfigContents[$key])){
             Write-Error "Error importing the config file [ $($RelativePath) ]: The property [$($key)] in the config file contains a null or empty value. This indicates a improperly set up environment. Please fill it out and re-run the script. Script will terminate. Press enter to exit..."
         }
-        $this | Add-Member NoteProperty -Name $key -Value $ImportConfigContents[$key]
+        # If it already exists we overwrite it, else we create the member
+        if($this.($key)){
+            $this.($key) = $ImportConfigContents[$key]
+        }else{
+            $this | Add-Member NoteProperty -Name $key -Value $ImportConfigContents[$key]
+        }
+        
     }
 }
 
@@ -86,6 +92,7 @@ $Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "TestRail
 $Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "testRunTitle" -Value $null
 $Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "PathToOSValidationTemplate" -Value $null
 $Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "afterInternalRestore" -Value $null
+$Global:OSValidationConfig | Add-Member -MemberType NoteProperty -Name "TestrailUserDetails" -Value $null
 
 
 # ===============       Tests        ===============
@@ -110,6 +117,22 @@ $TestResultTextToCodeLookup = {
     }
 }
 
+$Global:OSValidationTests | Add-Member -MemberType ScriptMethod -Name "TestResultTextToCodeLookup" -Value $TestResultTextToCodeLookup
+
+try{
+    $Global:OSValidationTests.ImportConfig($TESTS_CONFIG_RELATIVE_PATH)
+}catch{
+    Write-Host
+    Write-Host "There was an error  $($_.ScriptStackTrace) during config file import.: `n`n$($_.Exception.Message) " -ForegroundColor Red
+    Write-Host
+    Read-host "Press Enter to Exit..."
+    exit
+}
+
+
+<#
+Do not need the below, however this is a good reference for if you need to assign a method to an individual test object
+
 $formatTestResultMessage = {
     $timestamp = Get-Date -Format "dd/MM/yyyy__HH:mm:ss"
     $TestMessage = @"
@@ -127,17 +150,7 @@ $formatTestResultMessage = {
     $this.TestMessage = $TestMessage.Replace("TESTNAME", $this.Name).Replace("TIMESTAMP", $timestamp).Replace("TESTMESSAGE", $this.TestMessage).Replace("TESTRESULT", $this.TestStatus)
 }
 
-$Global:OSValidationTests | Add-Member -MemberType ScriptMethod -Name "TestResultTextToCodeLookup" -Value $TestResultTextToCodeLookup
-
-try{
-    $Global:OSValidationTests.ImportConfig($TESTS_CONFIG_RELATIVE_PATH)
-}catch{
-    Write-Host
-    Write-Host "There was an error  $($_.ScriptStackTrace) during config file import.: `n`n$($_.Exception.Message) " -ForegroundColor Red
-    Write-Host
-    Read-host "Press Enter to Exit..."
-    exit
-}
+This is the reference I mean \/
 
 try{
     # loops through wim/usb/r20
@@ -158,3 +171,5 @@ try{
     Read-host "Press Enter to Exit..."
     exit
 }
+
+#>

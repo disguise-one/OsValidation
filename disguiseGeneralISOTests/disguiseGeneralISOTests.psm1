@@ -56,18 +56,14 @@ function Test-ProjectsRegPath{
 
 function Test-RemoteReImageLogs {
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestType,
-        [Parameter(Mandatory=$true)]
-        [String]$AfterInternalRestore
     )
 
-    $AfterInternalRestore_bool = [bool]( $AfterInternalRestore -eq 'True' )
+    $AfterInternalRestore_bool = [bool]( $Global:OSValidationConfig.afterInternalRestore -eq 'True' )
     if( $AfterInternalRestore_bool ) {
         return Format-ResultsOutput -Result "WON'T TEST" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
     }
     else {
-        if( $TestType -eq "USB" ) {
+        if( $Global:OSValidationConfig.TestType -eq "USB" ) {
             $USBName = 'REDISGUISE'
             #Find USB Drive called REDISGUISE
             $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $USBName }
@@ -88,11 +84,11 @@ function Test-RemoteReImageLogs {
                 return Test-ReImageLogs -LoggingDirectory $USBDriveRootPath
             }
         }
-        elseif( $TestType -eq "R20" ) {
+        elseif( $Global:OSValidationConfig.TestType -eq "R20" ) {
             return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
         }
         else {
-            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $TestType )]"
+            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $Global:OSValidationConfig.TestType )]"
         }
     }
 }
@@ -235,8 +231,6 @@ Test-MachineName gets passed the machine it should be, and checks if it is the s
 
 function Test-MachineName{
     param(
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
     # Need to browse to disguisePower to get the CM serial no functions in CMINFO -> TO DO: Use the implemented Format-disguiseModulePathForImport
     # rather than using a hardcoded logic here \/
@@ -297,8 +291,6 @@ function Test-MachineName{
 
 function Test-OSName{
     param(        
-        [Parameter(Mandatory=$true)]
-        [String]$TestRunTitle
     )
 
     # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it

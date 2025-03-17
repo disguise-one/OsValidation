@@ -61,7 +61,7 @@ function Format-disguiseModulePathForImport{
     )
 
     # first create the repo path
-    $RepoPath = Join-Path -path $Global:DisguiseConfig.pathToDisguisePowerAndSecParentDir -ChildPath $RepoName
+    $RepoPath = Join-Path -path $Global:OSValidationConfig.pathToDisguisePowerAndSecParentDir -ChildPath $RepoName
     if(-not(Test-Path $RepoPath)){
         Write-Error "The Repo [$($RepoName)] cannot be found at relative path [$($RepoPath)] please check it exists and ensure you are calling this function from inside a script located in [utils\powershell] or any of it's subdirectories"
         return $false

@@ -14,7 +14,11 @@ function Format-ErrorMessage{
     
     $message += if($ScriptStackTrace){"`n`n$($ScriptStackTrace)."}else{""}
     
-    $message += "`n`nError Message:`n$($ExceptionMessage) `n`nArguments provided:`n"
+    $message += "`n`nError Message:`n$($ExceptionMessage) `n`n"
+    
+    if($ArgumentHashTable){
+        $message += "Arguments provided:`n`n"
+    }
     
     foreach($argument in $ArgumentHashTable){
         $message += "$($argument.Keys):`t`t$($argument)`n`n"
@@ -60,16 +64,12 @@ function Send-TestObjectToTestRail{
     )
 
     $ResultCode = $Global:OSValidationTests.TestResultTextToCodeLookup($TestObject.TestStatus)
-    $TestObject.formatTestResultMessage()
     if(-not ($ResultCode)){
         throw Format-ErrorMessage -FunctionName "Send-TestObjectToTestRail" -ExceptionMessage "After running the test [ $($TestObject.Name) ] it's test code has been detected as [ null ], indicating the test function has returned a non allowed test result of [ $($TestObject.TestStatus) ]`n`nThe allowed test results are:`n`t- PASSED`n`t- BLOCKED `n`t - UNTESTED `n`t- RETEST `n`t- FAILED `n`t- DONE `n`t- WON'T TEST `n`t- REQUIRE MORE INFO`nThis can be found inside config/config.psm1 [ TestResultTextToCodeLookup ]. If a new test result has been added on testrail, please update this table"
     }
-    $TestrailAPIResult = Add-TestRailResultForCase -RunId $Global:OSValidationConfig.TestRailRunObject.ID -CaseId $TestObject.TestRailCode -StatusId $ResultCode -Comment $TestObject.TestMessage 
+    $TestrailAPIResult = Add-TestRailResultForCase -RunId $Global:OSValidationConfig.TestRailRunObject.ID -CaseId $TestObject.TestRailCode -StatusId $ResultCode -Comment $TestObject.TestMessage
     if($TestObject.PathToImage){
-        # Need to make sure the test ID is correct
-        Write-Host "TestRail API Result: "
-        $TestrailAPIResult | Format-List * | Out-Host
-        Add-TestRailAttachemntToResult -TestId $TestrailAPIResult.TestID
+        Add-TestRailAttachemntToResult -ResultID $TestrailAPIResult.id -ImagePathArray $TestObject.PathToImage
     }
 }
 
@@ -102,6 +102,16 @@ function Initialize-TestRailAndHandleIssues{
                 "testRailPassword (ASCII ENCODED)"      =       $TestRailPasswordEncoded
             }
     }
+
+    try{
+        $userDetails = Get-TestRailUserByEmail -userEmail $TestRailUsername
+        $Global:OSValidationConfig.TestrailUserDetails = $userDetails
+    }catch{
+        Throw Format-ErrorMessage -FunctionName "Initialize-TestRailSession:`nSub-Function: Get-TestRailUserByEmail" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage $_.Exception.Message -ArgumentHashTable @{
+            "TestRailAPIRootURI"        =       $Global:OSValidationConfig.TestRailAPIRootURI
+            "TestRailUserName"          =       $TestRailUsername
+        }
+    }
 }
 
 function Start-TestRailTestRun{
@@ -112,10 +122,28 @@ function Start-TestRailTestRun{
         [String]$testRunTitle
     )
 
+    # If its a new run
     if($testRun -eq -1){
-        $TestRailRunObject = Start-TestRailRun -ProjectID $Global:OSValidationConfig.TestRailAPIProjectID -SuiteId $Global:OSValidationConfig.TestRailAPISuiteIDBeingUsed -Name $Global:OSValidationConfig.testRunTitle -Description " " -AssignedToID 73
-    }else{
-        Write-Host "TO DO: NEED TO GET EXISTING TEST RUN!"
+        try{
+            $TestRailRunObject = Start-TestRailRun -ProjectID $Global:OSValidationConfig.TestRailAPIProjectID -SuiteId $Global:OSValidationConfig.TestRailAPISuiteIDBeingUsed -Name $Global:OSValidationConfig.testRunTitle -Description " " -AssignedToID $Global:OSValidationConfig.TestrailUserDetails.ID
+        }catch{
+            throw Format-ErrorMessage -FunctionName "Start-TestRailTestRun:`nSub-Function: Start-TestRailRun" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage $_.Exception.Message -ArgumentHashTable @{
+                "OSValidationConfig.TestRailAPIProjectID"           =       $Global:OSValidationConfig.TestRailAPIProjectID
+                "OSValidationConfig.TestRailAPISuiteIDBeingUsed"    =       $Global:OSValidationConfig.TestRailAPISuiteIDBeingUsed
+                "OSValidationConfig.testRunTitle"                   =       $Global:OSValidationConfig.testRunTitle
+                "OSValidationConfig.TestrailUserDetails.ID"         =       $Global:OSValidationConfig.TestrailUserDetails.ID
+            }
+        } 
+    }
+    else{
+        # If its an existing run
+        try{
+            $TestRailRunObject = Get-TestRailRun -RunId $testRun
+        }catch{
+            throw Format-ErrorMessage -FunctionName "Start-TestRailTestRun:`nSub-Function: Get-TestRailRun" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage $_.Exception.Message -ArgumentHashTable @{
+                "RunID"           =       $testRun
+            }
+        }
     }
     
     $Global:OSValidationConfig.SetTestRailRunObject($TestRailRunObject)
@@ -127,10 +155,19 @@ function Start-TestRailTestRun{
     foreach($TestFamily in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).Keys){
         foreach($test in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).($TestFamily)){
             Write-host "Testing $($test.Name)..."
-            $resultObject       =   .($Test.TestScriptBlock)
+
+            try{
+               $resultObject       =   .($Test.TestScriptBlock)
+            }catch{
+                throw Format-ErrorMessage -FunctionName "$($Test.TestScriptBlock)" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage "Something has gone wrong when executing a Test's scriptblock function. Please see the exception message: `n`n$($_.Exception.Message)"
+            }
+            
             $test.TestStatus    =   $resultObject.OverallResult
             $Test.TestMessage   =   $resultObject.Message
             $test.PathToImage   =   $resultObject.PathToImage
+            
+            Write-Host "Test Finished`n`tTest Result: $($test.TestStatus)`n`tTest Message: $($Test.TestMessage)"
+
             Send-TestObjectToTestRail -testObject $Test
         }
     }
