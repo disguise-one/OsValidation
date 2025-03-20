@@ -159,7 +159,7 @@ function Start-TestRailTestRun{
             try{
                $resultObject       =   .($Test.TestScriptBlock)
             }catch{
-                throw Format-ErrorMessage -FunctionName "$($Test.TestScriptBlock)" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage "Something has gone wrong when executing a Test's scriptblock function. Please see the exception message: `n`n$($_.Exception.Message)"
+                Write-Host (Format-ErrorMessage -FunctionName "$($Test.TestScriptBlock)" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage "Something has gone wrong when executing a Test's scriptblock function. Please see the exception message: `n`n$($_.Exception.Message)")
             }
             
             $test.TestStatus    =   $resultObject.OverallResult

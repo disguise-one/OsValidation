@@ -34,10 +34,14 @@ Import-Module $powershellyaml -Force
 # Setting up logging
 $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
 try{
-    Start-Transcript -Path "C:\Windows\Logs\OSValidation-$($testRunTitle)-$($timestamp).log" -IncludeInvocationHeader
+    $transcriptPath = "C:\Windows\Logs\OSValidation-$($testRunTitle)-$($timestamp).log"
+    Write-Host "Attempting to start transcript at [ $($transcriptPath) ]"
+    Start-Transcript -Path $transcriptPath -IncludeInvocationHeader
     $Global:OSValidationConfig.StartingTimestamp = $timestamp
 }catch{
-    Start-Transcript -Path "C:\Users\$($Env:UserName)\Desktop\OSValidation-$($testRunTitle)-$($timestamp).log" -IncludeInvocationHeader
+    $transcriptPath = "C:\Users\$($Env:UserName)\Desktop\OSValidation-$($testRunTitle)-$($timestamp).log"
+    Write-Host "Initial transcript start failed. Trying to start backup logs at [ $transcriptPath ]"
+    Start-Transcript -Path $transcriptPath -IncludeInvocationHeader
 }
 
 # Main script
@@ -45,6 +49,8 @@ try{
     Start-MainScript -testRun $testRun -testRunTitle $testRunTitle -testrailUsername $testrailUsername -testrailPassword $testrailPassword -OSValidationTemplatePath $OSValidationTemplatePath -TestType $TestType -afterInternalRestore_string $afterInternalRestore_string
 }catch{
     Write-Error "There was an error $($_.ScriptStackTrace) during runtime: `n`n$($_.Exception.Message)"
+    Read-Host "Press Enter to exit..."
 }finally{
     Stop-Transcript
+    Read-Host "Press Enter to exit..."
 }
