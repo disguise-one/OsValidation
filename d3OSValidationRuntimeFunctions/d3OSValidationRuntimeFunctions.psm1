@@ -135,8 +135,8 @@ function Start-TestRailTestRun{
             }
         } 
     }
+    # If its an existing run
     else{
-        # If its an existing run
         try{
             $TestRailRunObject = Get-TestRailRun -RunId $testRun
         }catch{
@@ -145,30 +145,36 @@ function Start-TestRailTestRun{
             }
         }
     }
-    
-    $Global:OSValidationConfig.SetTestRailRunObject($TestRailRunObject)
 
+    # Store the run object
+    $Global:OSValidationConfig.SetTestRailRunObject($TestRailRunObject)
     Write-Host "Done. Test Rail API Response:"
     $TestRailRunObject | Format-List * | Out-Host
 
+    # The running tests bit
+    Write-Host "=========================================================="
     Write-Host "Performing $($Global:OSValidationConfig.TestRunType) Tests"
+    Write-Host "=========================================================="
+    
     foreach($TestFamily in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).Keys){
         foreach($test in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).($TestFamily)){
+            # This is actually where the test block is run
             Write-host "Testing $($test.Name)..."
-
+            Write-Host "----------------------------------------------------------"
             try{
                $resultObject       =   .($Test.TestScriptBlock)
             }catch{
-                Write-Host (Format-ErrorMessage -FunctionName "$($Test.TestScriptBlock)" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage "Something has gone wrong when executing a Test's scriptblock function. Please see the exception message: `n`n$($_.Exception.Message)")
+                Write-Host (Format-ErrorMessage -FunctionName "$($Test.TestScriptBlock)" -ScriptStackTrace $_.ScriptStackTrace -ExceptionMessage "Something has gone wrong when executing a Test's scriptblock function. Please see the exception message: `n`n$($_.Exception.Message)") -ForegroundColor Yellow
             }
-            
+            # Then we parse the result
             $test.TestStatus    =   $resultObject.OverallResult
             $Test.TestMessage   =   $resultObject.Message
             $test.PathToImage   =   $resultObject.PathToImage
-            
+            # And upload it to testrail
             Write-Host "Test Finished`n`tTest Result: $($test.TestStatus)`n`tTest Message: $($Test.TestMessage)"
-
             Send-TestObjectToTestRail -testObject $Test
+            Write-Host
+            Write-Host
         }
     }
 }

@@ -290,9 +290,8 @@ function Test-MachineName{
 }
 
 function Test-OSName{
-    param(        
+    param(
     )
-
     # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it
     $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {

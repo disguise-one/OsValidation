@@ -8,6 +8,7 @@ function Test-GraphicsCardControlPannel{
     param(        
     )
     # Importing the required modules
+    
     $path = Format-disguiseModulePathForImport -RepoName "disguisedsec" -ModuleName "d3HardwareValidation"
     Import-Module $path -Force
     $path = Format-disguiseModulePathForImport -RepoName "disguisedPower" -ModuleName "disUtils"
@@ -16,7 +17,7 @@ function Test-GraphicsCardControlPannel{
     $nw = $null
 
     try{
-        $hw = Assert-Hardware
+        $hw = Assert-Hardware -CaptureHardware
     }catch{
         write-error("Cannot gather hardware via [Assert-Hardware]:")
         write-error($_)
@@ -48,25 +49,25 @@ function Test-GraphicsCardControlPannel{
             Invoke-Command -ScriptBlock $command | Out-Null
         }catch{
             Write-Warning("Warning: Failed to delete [$($Env:USERPROFILE)\Desktop\NVIDIACorp.NVIDIAControlPanel_*]")
-            $returnMessage += "Note: [Desktop\NVIDIACorp.NVIDIAControlPanel] could not be removed. Please remove manually. "
+            $returnMessage += "Note: [Desktop\NVIDIACorp.NVIDIAControlPanel] could not be removed. Please remove manually. `n"
         }
 
         $nvidiaDriverTemplate = (Import-OSValidationTemplate -PathToTemplateFile $Global:OSValidationConfig.PathToOSValidationTemplate).PackageVersions | Where-Object {$_.sharedPackageHandle.ToUpper() -match ("NVIDIA_Driver").ToUpper()} 
 
         $testValue = "PASSED"
         if(-not(Compare-Versions -Version1 $hw.gpu.DriverVersion -Version2 $nvidiaDriverTemplate.publicPackageVersion -equal)){
-            $returnMessage += "Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. This is different to the required version: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)] as found in choco package [Nvidia Driver and Software]'s [publicPackageVersion]. "
+            $returnMessage += "Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. This is different to the required version: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)] as found in choco package [Nvidia Driver and Software]'s [publicPackageVersion]. `n"
             $testValue = "FAILED"
         }else{
-            $returnMessage += "Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. Choco package [Nvidia Driver and Software]'s [publicPackageVersion]: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)]"
+            $returnMessage += "Driver Validation passed: Nvidia Driver version detected as: [$([Version]$hw.gpu.DriverVersion)]. Choco package [Nvidia Driver and Software]'s [publicPackageVersion]: [$([Version]$nvidiaDriverTemplate.publicPackageVersion)]. `n"
         }
 
         if(-not $process){
-            $returnMessage += "Nvidia Control Pannel not Installed. "
+            $returnMessage += "`nInstalled Program Failed: Nvidia Control Pannel not Installed. "
             $testValue = "FAILED"
         }
 
-        return Format-ResultsOutput -Result $testValue -Message "$($returnMessage)"  -pathToImage $pathToImageStore
+        return Format-ResultsOutput -Result $testValue -Message "$($returnMessage)"  -gpathToImage $pathToImageStore
     }elseif(-not $hw){
         # An error occured when calling AssertHardware, so we cannot carry out the test
         return Format-ResultsOutput -Result "BLOCKED" -Message "Cannot poll GPU as d3HardwareValidation has not been imported correctly."
