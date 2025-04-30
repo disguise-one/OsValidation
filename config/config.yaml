@@ -155,3 +155,25 @@ driver_choco_package_handle_automated_installed_apps_and_features_version_test_b
     - "Mellanox WinMFT" #This is the SHared external handle, this doesn't appear in installed apps
     - "d3"              #these dont show up as windows apps (ie app store apps) so test will fail if we check these (doesnt matter as we test d3 install as its own seperate test)
     - "d3_testBranch"   #these dont show up as windows apps (ie app store apps) so test will fail if we check these (doesnt matter as we test d3 install as its own seperate test)
+
+approvedStartupApps_RegistryLocations:
+    - "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"
+    - "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\StartupFolder"
+    - "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run"
+    - "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32"
+
+approvedStartupApps_RegistryKeys:
+    - "d3buddy"
+    - "FirefaceMixTray2"
+    - "HDSPTray1"
+    - "SecurityHealth"
+    - "CodeMeter Control Center*"
+    - "WinMFT Cleanup*"
+    - "OneDrive"
+    - "MicrosoftEdge*"
+    - "mveXinfo*"
+
+approvedDisabledApps_RegistryKeys:
+    - "MicrosoftEdge*"
+    - "mveXinfo*"
+    - "OneDrive"

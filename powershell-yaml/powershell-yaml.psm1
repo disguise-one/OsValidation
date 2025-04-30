@@ -500,8 +500,11 @@ function ConvertTo-Yaml {
         }
     }
 }
-
-New-Alias -Name cfy -Value ConvertFrom-Yaml
-New-Alias -Name cty -Value ConvertTo-Yaml
+if( -not ( Get-Alias -Name cfy -ErrorAction SilentlyContinue ) ) { 
+    New-Alias -Name cfy -Value ConvertFrom-Yaml
+}
+if( -not ( Get-Alias -Name cty -ErrorAction SilentlyContinue ) ) { 
+    New-Alias -Name cty -Value ConvertTo-Yaml
+}
 
 Export-ModuleMember -Function ConvertFrom-Yaml,ConvertTo-Yaml -Alias cfy,cty

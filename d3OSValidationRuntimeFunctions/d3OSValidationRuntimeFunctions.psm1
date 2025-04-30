@@ -93,6 +93,7 @@ function Initialize-TestRailAndHandleIssues{
     }
 
     try{
+        Write-Host
         Initialize-TestRailSession -Uri $Global:OSValidationConfig.TestRailAPIRootURI -User $TestRailUsername -ApiKey ([System.Text.Encoding]::Ascii.GetString([System.Convert]::FromBase64String($TestRailPasswordEncoded)))
         Write-Host "Initialized Test Rail Settings under user [ $($TestRailUsername) ]"
     }catch{
@@ -159,7 +160,7 @@ function Start-TestRailTestRun{
     foreach($TestFamily in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).Keys){
         foreach($test in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).($TestFamily)){
             # This is actually where the test block is run
-            Write-host "Testing $($test.Name)..."
+            Write-host "Testing [$($TestFamily)] - [$($test.Name)]..."
             Write-Host "----------------------------------------------------------"
             try{
                $resultObject       =   .($Test.TestScriptBlock)
