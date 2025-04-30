@@ -153,15 +153,18 @@ function Start-TestRailTestRun{
     $TestRailRunObject | Format-List * | Out-Host
 
     # The running tests bit
-    Write-Host "=========================================================="
-    Write-Host "Performing $($Global:OSValidationConfig.TestRunType) Tests"
-    Write-Host "=========================================================="
+    Write-Host
+    Write-Host "==========================================================================================================" -ForegroundColor Cyan
+    Write-Host "Performing $($Global:OSValidationConfig.TestRunType) Tests" -ForegroundColor Cyan
+    Write-Host "==========================================================================================================" -ForegroundColor Cyan
     
     foreach($TestFamily in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).Keys){
         foreach($test in $Global:OSValidationTests.($Global:OSValidationConfig.TestRunType).($TestFamily)){
             # This is actually where the test block is run
-            Write-host "Testing [$($TestFamily)] - [$($test.Name)]..."
-            Write-Host "----------------------------------------------------------"
+            Write-Host
+            Write-Host "----------------------------------------------------------------------------------------------------------" -ForegroundColor Yellow
+            Write-Host "Testing [$($TestFamily)] - [$($test.Name)]..." -ForegroundColor Yellow
+            Write-Host "----------------------------------------------------------------------------------------------------------" -ForegroundColor Yellow
             try{
                $resultObject       =   .($Test.TestScriptBlock)
             }catch{
