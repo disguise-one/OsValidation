@@ -102,6 +102,7 @@ function Test-ReImageLogs {
     $postbootRegex = "^PS(\d+)_POSTBOOT_.*\.txt$"
     $upgradeRegex = "^PS(\d+|_UnknownSerial)_UPGRADE_.*\.txt$"
     $deployRegex = "^PS(\d+|_UnknownSerial)_DEPLOY_.*\.txt$"
+    $internalRestoreRegex = "^PS(\d+|_UnknownSerial)_INTERNAL_.*\.txt$"
 
     $codeMeterPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
 
@@ -115,6 +116,8 @@ function Test-ReImageLogs {
         $postbootRegex = $postbootRegex -replace "\d+", $CMINFO.d3serial
         $upgradeRegex = $upgradeRegex -replace "\d+", $CMINFO.d3serial
         $deployRegex = $deployRegex -replace "\d+", $CMINFO.d3serial
+        $internalRestoreRegex = $internalRestoreRegex -replace "\d+", $CMINFO.d3serial
+
     }
 
     #find all UPGRADE/DEPLOY/POSTBOOT Logs
@@ -122,6 +125,7 @@ function Test-ReImageLogs {
     $postbootLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $postbootRegex }
     $upgradeLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $upgradeRegex }
     $deployLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $deployRegex }
+    $internalRestoreLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $internalRestoreRegex }
 
     [string[]]$pathToLogFileStore_Array = [string[]]@()
 
@@ -163,6 +167,18 @@ function Test-ReImageLogs {
         else {
             $reimageTest = "BLOCKED"
             $reimageMessage = "A TOTAL OF $($noOfDeployLogsFound) DEPLOY logs were found [$( $deployLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
+        }
+    }
+    elseif($internalRestoreLogFileNames){
+        $noOfInternalRestoreLogsFound = ([string[]]$internalRestoreLogFileNames.Name).Length
+        if( $noOfInternalRestoreLogsFound -eq 1 ) {
+            $reimageTest = "PASSED"
+            $reimageMessage = "Internal Restore Log File found [$($internalRestoreLogFileNames.FullName)]"
+            [string[]]$pathToLogFileStore_Array += [string]($internalRestoreLogFileNames.FullName)
+        }
+        else {
+            $reimageTest = "BLOCKED"
+            $reimageMessage = "A TOTAL OF $($noOfInternalRestoreLogsFound) INTERNAL Restore logs were found [$( $internalRestoreLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
         }
     }
     else{

@@ -1,4 +1,3 @@
-
 $d3ModelConfigPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3ModelConfigImporter"
 $d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
 Import-Module $d3ModelConfigPath -Force
@@ -895,6 +894,101 @@ function Test-RightClickContextMenuRegistryValues{
     
 }
 
+function Test-PersonalizationSettingsRegistryValues{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+    $windowsVersions = Get-WindowsVersionInfo
+    if($windowsVersions.WindowsVersion -eq 10){
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "The windows version has been detected as [$($windowsVersions.WindowsVersion)], which doesn't require this test."
+    }
+    $contextMenu = $null
+    
+    $overallResultText = ""
+    $overallResultBoolean = $true
+    
+    #Show recently added apps on Start menu
+    $registryLocation1 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+    $overallResultText += "Registry Location [$($registryLocation1)] Exists: "
+    try{
+        $contextMenu1 = Get-ItemProperty -Path $registryLocation1 -ErrorAction SilentlyContinue
+        #this line only gets run if the command above worked (which means $registryLocation1 exists)
+        $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+    }catch{
+    	#this section only gets run if the command above failed (which means $registryLocation1 does not exist)
+        $contextMenu1 = $null
+        $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+        $overallResultBoolean = $false
+    }
+    
+     #Show the most used app
+     $registryLocation2 = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+     $overallResultText += "Registry Location [$($registryLocation2)] Exists: "
+     try{
+         $contextMenu2 = Get-ItemProperty -Path $registryLocation2 -ErrorAction SilentlyContinue
+         #this line only gets run if the command above worked (which means $registryLocation1 exists)
+         $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+     }catch{
+         #this section only gets run if the command above failed (which means $registryLocation2 does not exist)
+         $contextMenu2 = $null
+         $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+         $overallResultBoolean = $false
+     }
+    
+      #check the registry values, but only if the two registry locations above exist
+      if( $overallResultBoolean ) {
+    
+	    #Check HideRecentlyAddedApps = 1 from registryLocation1
+	    $overallResultText += "Registry Value [$($registryLocation1)/HideRecentlyAddedApps] is [1]: "
+	    if (($contextMenu1.('HideRecentlyAddedApps') -eq 1)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    
+	    #Check Start_TrackProgs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackProgs] is [0]: "
+	    if (($contextMenu2.('Start_TrackProgs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_TrackDocs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackDocs] is [0]: "
+	    if (($contextMenu2.('Start_TrackDocs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_IrisRecommendations = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_IrisRecommendations] is [0]: "
+	    if (($contextMenu2.('Start_IrisRecommendations') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+	    #Check Start_AccountNotifications = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_AccountNotifications] is [0]: "
+	    if (($contextMenu2.('Start_AccountNotifications') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+
 function Test-OptionalFeatures{
     param(
         # [Parameter(Mandatory=$false)]
@@ -1050,35 +1144,38 @@ function Test-PasswordProtectedSharing{
 }
 
 function Test-StartupApps {
-    $StartupRegList = [string[]]@( 
-        #"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-        #"HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run",
-        #"HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder",
-        "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32"
-    )
 
-    $KeyNameMatchPatternList =@(
-        "d3buddy", 
-        "FirefaceMixTray2",
-        "HDSPTray1",
-        "SecurityHealth",
-        "CodeMeter Control Center*",
-        "WinMFT Cleanup*",
-        "OneDrive",
-        "MicrosoftEdge*",
-        "mveXinfo*"
+    # Get Config YAML as PS Object
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
 
-    )
+    $StartupRegList = $configYAMLPSObject.approvedStartupApps_RegistryLocations
 
-    $ListOfDisabledApps = @(
-    "OneDrive",
-    "MicrosoftEdge*",
-    "mveXinfo*"
-    )
+    $KeyNameMatchPatternList = $configYAMLPSObject.approvedStartupApps_RegistryKeys
 
+    $ListOfDisabledApps = $configYAMLPSObject.approvedDisabledApps_RegistryKeys
+
+    # Gathering the model config
+    $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
+
+    Write-Host
+    Write-Host "Checking Model-Specific Settings:"
+
+    #remove d3buddy from the list if this model of machine DOES NOT have d3 installed
+    if( $modelconfig.hasD3Installed ) {
+        Write-Host "Keeping [d3buddy] in the list of approved startup items as the [$($modelConfig.biosHandle)] has d3 Installed"
+    }
+    else {
+        Write-Warning "Removing [d3buddy] from the list of approved startup items as the [$($modelConfig.biosHandle)] should not have d3 Installed"
+        $noOfItemsBeforeRemoval = $StartupRegList.Count
+        $StartupRegList = $StartupRegList | Where-Object { $_ -ne 'd3buddy' }
+        if( $StartupRegList.Count -ne ( $noOfItemsBeforeRemoval - 1 ) ) {
+            Write-Error "Error Removing [d3buddy] from the list of Startup Items: [$( $StartupRegList -join ']/[' )]"
+        } 
+    }
+
+    #remove mveXinfo* from the list if this model of machine DOES NOT allow matrox cards
+
+    #etc
 
     $overallResultBoolean = $true
     $overallResultText = ""
