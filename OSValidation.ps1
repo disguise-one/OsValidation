@@ -12,7 +12,9 @@ param(
     [Parameter(Mandatory=$true)]
     [String]$TestType,
     [Parameter(Mandatory=$true)]
-    [String]$afterInternalRestore_string
+    [String]$afterInternalRestore_string,
+    [Parameter(Mandatory=$false)]
+    [Switch]$ExitImmediatelyOnCompletion
 )
 
 # ALLLLL (not quite all...) the imports
@@ -52,8 +54,10 @@ try{
     Start-MainScript -testRun $testRun -testRunTitle $testRunTitle -testrailUsername $testrailUsername -testrailPassword $testrailPassword -OSValidationTemplatePath $OSValidationTemplatePath -TestType $TestType -afterInternalRestore_string $afterInternalRestore_string
 }catch{
     Write-Error "There was an error $($_.ScriptStackTrace) during runtime: `n`n$($_.Exception.Message)"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to continue..."
 }finally{
     Stop-Transcript
-    Read-Host "Press Enter to exit..."
+    if( -not $ExitImmediatelyOnCompletion ) {
+        Read-Host "Press Enter to exit..."
+    }
 }

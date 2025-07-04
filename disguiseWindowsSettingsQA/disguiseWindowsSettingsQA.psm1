@@ -157,7 +157,8 @@ function Get-AndTestWindowsAppMenuContents{
     # charmap - character map
     # mstsc - remote desktop
     # MOVE TO CONFIG FILES
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $appCheckingNamesArray = $testConfig.Windows_settings.windows_allowed_apps
     $appTestingPresenceArray = @()
 
@@ -415,7 +416,8 @@ function Test-ChromeBookmarks{
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
 
     # Getting the required bookmarks from the config yaml
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $requiredBookmarkURLs = $testConfig.Windows_settings.chrome_bookmark_urls | Sort-Object -Descending
     $requiredBookmarkURLs = $requiredBookmarkURLs -replace "^(http(s?):\/\/)", ""
     $actualBookmarks = $Value.roots.bookmark_bar.children.url | Sort-Object -Descending
@@ -502,14 +504,20 @@ function Test-ChromeHomepage {
     # Getting the chrome homepage and converting from JSON
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\Secure Preferences"
     if (-not (Test-Path -Path $Path)) {
-        Write-Error "Could not find Chrome Homepage for user: [$($Env:USERNAME)]"
+        #Write-Error "Could not find Chrome Homepage for user: [$($Env:USERNAME)]"
         return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
+    if ( ( -not $Value ) -or ( -not $Value.session ) -or ( $null -eq $Value.session.startup_urls )) {
+        $ErrorMessage = "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. The file [$($Path)] doesn not contain a [session].[startup_urls] Property"
+        #Write-Error $ErrorMessage
+        return Format-ResultsOutput -Result "BLOCKED" -Message $ErrorMessage
+    }
     $actualHomeURL = ($Value.session.startup_urls).Replace("https:\\","").Replace("http:\\","").trim('\')
 
     # Getting the homepage URL
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $homeURL = ($testConfig.Windows_settings.chrome_home_url).Replace("https:\\", "").Replace("http:\\", "").trim('\')
 
     $Message = @"
@@ -985,7 +993,7 @@ function Test-PersonalizationSettingsRegistryValues{
 	    }
     }
     
-    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
     return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
 }
 
@@ -1034,7 +1042,7 @@ function Test-OptionalFeatures{
 
 	    }
     
-    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
     return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
 }
     
@@ -1048,9 +1056,9 @@ function Test-D3InstallLocation{
     $folder1 = 'C:\Program Files\d3 Production Suite\build'
     $folder2 = 'C:\Program Files\d3 Production Suite\source'
 
-
-    $resultStatus = if ((Test-Path -Path $Folder) -and (Test-path -path $folder2)) { "Path exists!"} else {"Path doesn't exist."}
-    return Format-ResultsOutput -Result $resultStatus
+    $resultStatus = if((Test-Path -Path $Folder1) -and (Test-path -path $folder2)) { "PASSED" } else { "FAILED" }
+    $overallResultText = if((Test-Path -Path $Folder1) -and (Test-path -path $folder2)) { "Path exists!"} else {"One or both of the these paths do not exist: [$($folder1)], [$($folder2)]"}
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
 }
 
 function Test-RenderstreamFolder{
@@ -1123,23 +1131,38 @@ function Test-RenderstreamFolder{
         Write-Host $overallResultText  
 
         }
-        $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+        $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
         return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
     }
 }
 function Test-PasswordProtectedSharing{
 
-        $ListOfGuestUser = Get-LocalUser -name guest 
+    $ListOfGuestUser = Get-LocalUser -name guest 
 
-        if (($ListOfGuestUser.enabled) -and ( -not $ListOfGuestUse.PasswordRequired )) {
-            write-host 'Password Protected Sharing disabled'
+    if (($ListOfGuestUser.enabled) -and ( -not $ListOfGuestUse.PasswordRequired )) {
+        $overallResultText = 'Password Protected Sharing can work (Guest User is Enabled and does not require a password)'
+        write-host $overallResultText
+        $overallResultBoolean = $true
+    }else{ 
+        $overallResultText = 'Password Protected Sharing cannot be disabled becasuse the Guest User is either not Enabled or it is Enabled WITH A required password)'
+        write-Warning $overallResultText
+        $overallResultBoolean = $false
+    }
+
+    if( $overallResultBoolean ) {
+        $sharingSetting = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "ForceGuest"
+        if ($sharingSetting.ForceGuest -eq 1) {
+            $overallResultText = "Password Protected Sharing is disabled (Guest User is Enabled and does not require a password, and [ForceGuest] is enabled in Registry location [HKLM:\SYSTEM\CurrentControlSet\Control\Lsa])"
+            write-host $overallResultText
             $overallResultBoolean = $true
-        }else{ 
-            write-host 'Password Protected Sharing enabled'
+        } else {
+            $overallResultText = "Password Protected Sharing is enabled (Guest User is Enabled and does not require a password HOWEVER [ForceGuest] is Disabled in Registry location [HKLM:\SYSTEM\CurrentControlSet\Control\Lsa] and it should be Enabled)"
+            write-Warning $overallResultText
+            $overallResultBoolean = $false
         }
-
+    }
     
-    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
     return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
 }
 
@@ -1268,7 +1291,7 @@ function Test-StartupApps {
         }   
 
     } #end of reg keys loop
-    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED " }
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
     Write-Host $resultStatus -ForegroundColor Yellow
     Write-Host $overallResultText -ForegroundColor Yellow
 }

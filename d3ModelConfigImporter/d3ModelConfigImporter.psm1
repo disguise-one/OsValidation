@@ -28,7 +28,15 @@ function Import-ModelConfig{
 
     #Cast the config file to a PSCustomObject -> String in json format
     # Want to remove all the extra postboot scripts, as they are converted to powershell code which is inside the string. Unnessesary
-    $configObject = [PSCustomObject]$Global:DisguiseConfig.getHardwarePlatformConfig()
+    try {
+        $configObject = [PSCustomObject]$Global:DisguiseConfig.getHardwarePlatformConfig()
+    }
+    catch {
+        $errorMessage = "The Model config file for this Model of machine could not be loaded from [$($modifiedPath)]. Are you running on a Disguise Server? If so, you may need to update the disguisedpower commit at [$($modifiedPath)] to pull in the latest model config files. REASON FOR ERROR: $( $_.Exception.Message )"
+        Write-Error $errorMessage
+        throw $errorMessage
+    }
+    
     $configObject = $configObject | Select-Object -Property * -ExcludeProperty PostbootExtrasScriptBlock | Select-Object -Property * -ExcludeProperty Post_Reboot_Script_Block
     $configString = $configObject | ConvertTo-Json 
 
