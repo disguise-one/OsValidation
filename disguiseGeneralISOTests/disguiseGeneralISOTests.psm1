@@ -65,6 +65,7 @@ function Test-RemoteReImageLogs {
     else {
         if( $Global:OSValidationConfig.TestRunType -eq "USB" ) {
             $USBName = 'REDISGUISE'
+            $SecondaryUSBName = 'USED_REDISGUISE'
             #Find USB Drive called REDISGUISE
             $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $USBName }
             #We want Redisguises to work from External SSDs as well as External USB Drives now as External SSD UBS Sticks are becoming more and more popular
@@ -72,8 +73,15 @@ function Test-RemoteReImageLogs {
                 #This is the powershell to get all USB SSD DRIVES, then check through all their Partitions for Mounted Drive Letters then Check through each of them for the Volume Label 'REDISGUISE', then add the 'label' field to these volume objects so they match the spec below
                 $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $USBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
             }
+            #when using the Automated reimage intergation testing in the rack, USBs get renamed to USED_REDISGUISE after the USB reimage so that they dont interfere with and internal restore reimages that come after them
             if( -not $USBVolumeObject ) {
-                return Format-ResultsOutput -Result "FAILED" -Message "No USB Drive called [REDISGUISE] Could be found, please plug in your USB and try again!"
+               #Find USB Drive called USED_REDISGUISE
+                $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $SecondaryUSBName }
+            }
+            #We want Redisguises to work from External SSDs as well as External USB Drives now as External SSD UBS Sticks are becoming more and more popular
+            if( -not $USBVolumeObject ) {
+                #This is the powershell to get all USB SSD DRIVES, then check through all their Partitions for Mounted Drive Letters then Check through each of them for the Volume Label 'USED_REDISGUISE', then add the 'label' field to these volume objects so they match the spec below
+                $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $SecondaryUSBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
             }
             elseif( ([string[]]$USBVolumeObject.DriveLetter).Length -gt 1 ) {
                 return Format-ResultsOutput -Result "FAILED" -Message "A total of $( ([string[]]$USBVolumeObject.DriveLetter).Length ) USB Drives called [REDISGUISE] Could be found, please unplug the extra USB(s) and try again!"
@@ -88,7 +96,7 @@ function Test-RemoteReImageLogs {
             return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
         }
         else {
-            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $Global:OSValidationConfig.TestRunType )]"
+            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Test Type [$( $Global:OSValidationConfig.TestRunType )] has not yet been implemented for this test. Please either implement it! or conduct this test manually."
         }
     }
 }
@@ -196,7 +204,6 @@ function Test-ReImageLogs {
     else {
         return Format-ResultsOutput -Result "BLOCKED" -Message $feedbackMessage -pathToImageArr $pathToLogFileStore_Array
     }
-
 }
 
 function Test-NICNames{
