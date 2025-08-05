@@ -106,6 +106,38 @@ return @{
                 TestMessage     =   $null
                 PathToImage     =   $null
                 TestScriptBlock =   {Test-RightClickContextMenuRegistryValues}
+            },
+            [PSCustomObject]@{
+                Name            =   "Test for optional feature existing or not"
+                TestRailCode    =   787613
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-OptionalFeatures}
+            },
+            [PSCustomObject]@{
+                Name            =   "Network path has the correct path under d drive"
+                TestRailCode    =   928830
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-RenderstreamFolder}
+            },
+            [PSCustomObject]@{
+                Name            =   "Password protected sharing has been disabled"
+                TestRailCode    =   374735
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-PasswordProtectedSharing}
+            },
+            [PSCustomObject]@{
+                Name            =   "Srartup apps have correct settings"
+                TestRailCode    =   374721
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-StartupApps}
             }
         )
 
@@ -168,6 +200,14 @@ return @{
                 TestMessage     =   $null
                 PathToImage     =   $null
                 TestScriptBlock =   {Test-OSName}
+            },
+            [PSCustomObject]@{
+                Name            =   "Those two folders are in the path"
+                TestRailCode    =   374761
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-D3InstallLocation}
             }
         )
     }
@@ -246,6 +286,22 @@ return @{
                 TestMessage     =   $null
                 PathToImage     =   $null
                 TestScriptBlock =   {Test-CWindowsDisguisedpowerGetsDeleted}
+            },
+            [PSCustomObject]@{
+                Name            =   "Windows licensing"
+                TestRailCode    =   754241
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Get-WindowsLicensingAndEvidence}
+            },            
+            [PSCustomObject]@{
+                Name            =   "Audio patch"
+                TestRailCode    =   754278
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Get-AudioPatch}
             }
         )
 

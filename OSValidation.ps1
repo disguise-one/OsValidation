@@ -12,7 +12,9 @@ param(
     [Parameter(Mandatory=$true)]
     [String]$TestType,
     [Parameter(Mandatory=$true)]
-    [String]$afterInternalRestore_string
+    [String]$afterInternalRestore_string,
+    [Parameter(Mandatory=$false)]
+    [Switch]$ExitImmediatelyOnCompletion
 )
 
 # ALLLLL (not quite all...) the imports
@@ -47,13 +49,15 @@ try{
 
 # Main script
 try{
-    Write-Host "Starting OS Validation test With following parameters:`n`t- testRun: `t`t`t`t[ $($testRun) ]`n`t- testRunTitle: `t`t`t[ $($testRunTitle) ]`n`t- testrailUsername: `t`t`t[ $($testrailUsername) ]`n`t- testrailPassword: `t`t`t[ $($testrailPassword) ]`n`t- OSValidationTemplatePath: `t`t[ $($OSValidationTemplatePath) ]`n`t- TestType: `t`t`t`t[ $($TestType) ]`n`t- afterInternalRestore_string: `t`t[ $($afterInternalRestore_string) ]"
-
+    Write-Host
+    Write-Host "Starting OS Validation test With following parameters:`nOSValidation.ps1 -testRun: `"$($testRun)`" -testRunTitle `"$($testRunTitle)`" -testrailUsername `"$($testrailUsername)`" -testrailPassword `"$($testrailPassword)`" -OSValidationTemplatePath `"$($OSValidationTemplatePath)`" -TestType `"$($TestType)`" -afterInternalRestore_string `"$($afterInternalRestore_string)`""
     Start-MainScript -testRun $testRun -testRunTitle $testRunTitle -testrailUsername $testrailUsername -testrailPassword $testrailPassword -OSValidationTemplatePath $OSValidationTemplatePath -TestType $TestType -afterInternalRestore_string $afterInternalRestore_string
 }catch{
     Write-Error "There was an error $($_.ScriptStackTrace) during runtime: `n`n$($_.Exception.Message)"
-    Read-Host "Press Enter to exit..."
+    Read-Host "Press Enter to continue..."
 }finally{
     Stop-Transcript
-    Read-Host "Press Enter to exit..."
+    if( -not $ExitImmediatelyOnCompletion ) {
+        Read-Host "Press Enter to exit..."
+    }
 }

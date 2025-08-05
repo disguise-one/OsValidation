@@ -63,8 +63,9 @@ function Test-RemoteReImageLogs {
         return Format-ResultsOutput -Result "WON'T TEST" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
     }
     else {
-        if( $Global:OSValidationConfig.TestType -eq "USB" ) {
+        if( $Global:OSValidationConfig.TestRunType -eq "USB" ) {
             $USBName = 'REDISGUISE'
+            $SecondaryUSBName = 'USED_REDISGUISE'
             #Find USB Drive called REDISGUISE
             $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $USBName }
             #We want Redisguises to work from External SSDs as well as External USB Drives now as External SSD UBS Sticks are becoming more and more popular
@@ -72,8 +73,15 @@ function Test-RemoteReImageLogs {
                 #This is the powershell to get all USB SSD DRIVES, then check through all their Partitions for Mounted Drive Letters then Check through each of them for the Volume Label 'REDISGUISE', then add the 'label' field to these volume objects so they match the spec below
                 $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $USBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
             }
+            #when using the Automated reimage intergation testing in the rack, USBs get renamed to USED_REDISGUISE after the USB reimage so that they dont interfere with and internal restore reimages that come after them
             if( -not $USBVolumeObject ) {
-                return Format-ResultsOutput -Result "FAILED" -Message "No USB Drive called [REDISGUISE] Could be found, please plug in your USB and try again!"
+               #Find USB Drive called USED_REDISGUISE
+                $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $SecondaryUSBName }
+            }
+            #We want Redisguises to work from External SSDs as well as External USB Drives now as External SSD UBS Sticks are becoming more and more popular
+            if( -not $USBVolumeObject ) {
+                #This is the powershell to get all USB SSD DRIVES, then check through all their Partitions for Mounted Drive Letters then Check through each of them for the Volume Label 'USED_REDISGUISE', then add the 'label' field to these volume objects so they match the spec below
+                $USBVolumeObject = ( Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' } | Get-Disk | Get-Partition | Where-Object { $_.DriveLetter } | Select-Object DriveLetter | Get-Volume | Where-Object { $_.FileSystemLabel -eq $SecondaryUSBName } | Foreach-Object { $_ | Add-Member -MemberType NoteProperty -Name 'Label' -Value $_.FileSystemLabel -PassThru } )
             }
             elseif( ([string[]]$USBVolumeObject.DriveLetter).Length -gt 1 ) {
                 return Format-ResultsOutput -Result "FAILED" -Message "A total of $( ([string[]]$USBVolumeObject.DriveLetter).Length ) USB Drives called [REDISGUISE] Could be found, please unplug the extra USB(s) and try again!"
@@ -84,11 +92,11 @@ function Test-RemoteReImageLogs {
                 return Test-ReImageLogs -LoggingDirectory $USBDriveRootPath
             }
         }
-        elseif( $Global:OSValidationConfig.TestType -eq "R20" ) {
+        elseif( $Global:OSValidationConfig.TestRunType -eq "R20" ) {
             return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
         }
         else {
-            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $Global:OSValidationConfig.TestType )]"
+            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Test Type [$( $Global:OSValidationConfig.TestRunType )] has not yet been implemented for this test. Please either implement it! or conduct this test manually."
         }
     }
 }
@@ -102,6 +110,7 @@ function Test-ReImageLogs {
     $postbootRegex = "^PS(\d+)_POSTBOOT_.*\.txt$"
     $upgradeRegex = "^PS(\d+|_UnknownSerial)_UPGRADE_.*\.txt$"
     $deployRegex = "^PS(\d+|_UnknownSerial)_DEPLOY_.*\.txt$"
+    $internalRestoreRegex = "^PS(\d+|_UnknownSerial)_INTERNAL_.*\.txt$"
 
     $codeMeterPath = Format-disguiseModulePathForImport -RepoName "disguisedpower" -moduleName "CodeMeter"
 
@@ -115,6 +124,8 @@ function Test-ReImageLogs {
         $postbootRegex = $postbootRegex -replace "\d+", $CMINFO.d3serial
         $upgradeRegex = $upgradeRegex -replace "\d+", $CMINFO.d3serial
         $deployRegex = $deployRegex -replace "\d+", $CMINFO.d3serial
+        $internalRestoreRegex = $internalRestoreRegex -replace "\d+", $CMINFO.d3serial
+
     }
 
     #find all UPGRADE/DEPLOY/POSTBOOT Logs
@@ -122,6 +133,7 @@ function Test-ReImageLogs {
     $postbootLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $postbootRegex }
     $upgradeLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $upgradeRegex }
     $deployLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $deployRegex }
+    $internalRestoreLogFileNames = $logDirectoryContents | Where-Object { $_.Name -match $internalRestoreRegex }
 
     [string[]]$pathToLogFileStore_Array = [string[]]@()
 
@@ -165,6 +177,18 @@ function Test-ReImageLogs {
             $reimageMessage = "A TOTAL OF $($noOfDeployLogsFound) DEPLOY logs were found [$( $deployLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
         }
     }
+    elseif($internalRestoreLogFileNames){
+        $noOfInternalRestoreLogsFound = ([string[]]$internalRestoreLogFileNames.Name).Length
+        if( $noOfInternalRestoreLogsFound -eq 1 ) {
+            $reimageTest = "PASSED"
+            $reimageMessage = "Internal Restore Log File found [$($internalRestoreLogFileNames.FullName)]"
+            [string[]]$pathToLogFileStore_Array += [string]($internalRestoreLogFileNames.FullName)
+        }
+        else {
+            $reimageTest = "BLOCKED"
+            $reimageMessage = "A TOTAL OF $($noOfInternalRestoreLogsFound) INTERNAL Restore logs were found [$( $internalRestoreLogFileNames.Name -join '], [' )] - ONLY 1 EXPECTED"
+        }
+    }
     else{
         $reimageTest = "FAILED"
         $reimageMessage = "Cannot find any files matching either regex [$($upgradeRegex)] or [$($deployRegex)] in directory [$($LoggingDirectory)]. This indicates no upgrade or deployment logs have been made. Please check manually to verify."
@@ -180,7 +204,6 @@ function Test-ReImageLogs {
     else {
         return Format-ResultsOutput -Result "BLOCKED" -Message $feedbackMessage -pathToImageArr $pathToLogFileStore_Array
     }
-
 }
 
 function Test-NICNames{
@@ -292,6 +315,20 @@ function Test-MachineName{
 function Test-OSName{
     param(
     )
+
+    #Load and Validate Config YAML 
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    Write-Host $configYAMLPSObject
+
+    $reg_location_d3_information_folder = $configYAMLPSObject.registry_keys.d3_information_folder
+    $reg_location_d3_release_entry = $configYAMLPSObject.registry_keys.d3_information_entries.d3_info
+    $d3VersionNumberFromRegistry = Get-ItemProperty -Path $reg_location_d3_information_folder -Name $reg_location_d3_release_entry
+    $d3VersionNumber = $d3VersionNumberFromRegistry.'product version'
+    $d3MinVersion = "30.8.0.216685"
+    
+    if ($d3VersionNumber -lt $d3MinVersion) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Your d3 version [$($d3VersionNumber)] is too old. Please update it to [$($d3MinVersion)] and re-run this test. Thanks!"}
     # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it
     $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
@@ -303,8 +340,7 @@ function Test-OSName{
         return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )] does not contain a value for [RedisguiseName], cannot complete Test"
     }
 
-    #Load and Validate Config YAML 
-    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
     if( -not $configYAMLPSObject ) {
         return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] could not be loaded. Either the file must be missing or it contains invalid YAML formatting."
     }
@@ -396,6 +432,7 @@ function Test-OSName{
         $overallResult = "PASSED"
     }
     return Format-ResultsOutput -Result $overallResult -Message "REGISTRY CHECK: $($d3testResult_RegCheck) - $($d3Message_RegCheck)`n`n`nD3SERVICE CHECK: $($d3testResult_APICheck) - $($d3Message_APICheck)"
+    
 }
 
 function Test-DDrive{
@@ -430,6 +467,43 @@ function Test-CWindowsDisguisedpowerGetsDeleted{
     }
 }
 
+function Get-AudioPatch{
+    param()
+
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "AudioPatch_$($timestamp).bmp"
+
+    Start-sleep -Milliseconds 200
+    
+    # 1. Start TotalMix FX
+    $exePath = "C:\Windows\System32\totalmixFX.exe"
+    $process = Start-Process -FilePath $exePath
+    $ExistingProcess = Get-Process -Name "TotalMixFX" -ErrorAction SilentlyContinue
+    $process = $ExistingProcess
+
+    Start-sleep -Milliseconds 200
+    
+     # 2. Send 'x' key
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.SendKeys]::SendWait("x")
+    
+    Start-sleep -Milliseconds 500
+
+    $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
+    $process.CloseMainWindow() | Out-Null
+    Start-Sleep -Seconds 2
+
+    if($process){
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Please review the screenshot and add the test result to testrail." -pathToImage $pathToImageStore
+    }else{
+        return Format-ResultsOutput -Result "FAILED" -Message "No Totalmix FX found"
+    }
+
+
+}
+
+
+
 
 
 
@@ -437,3 +511,5 @@ function Test-CWindowsDisguisedpowerGetsDeleted{
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.
 Export-ModuleMember -Function *-*
+
+

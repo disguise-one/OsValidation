@@ -1,4 +1,3 @@
-
 $d3ModelConfigPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3ModelConfigImporter"
 $d3OSQAUtilsPath = Join-Path -Path $PSScriptRoot -ChildPath "..\d3OSQAUtils"
 Import-Module $d3ModelConfigPath -Force
@@ -158,7 +157,8 @@ function Get-AndTestWindowsAppMenuContents{
     # charmap - character map
     # mstsc - remote desktop
     # MOVE TO CONFIG FILES
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $appCheckingNamesArray = $testConfig.Windows_settings.windows_allowed_apps
     $appTestingPresenceArray = @()
 
@@ -416,7 +416,8 @@ function Test-ChromeBookmarks{
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
 
     # Getting the required bookmarks from the config yaml
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $requiredBookmarkURLs = $testConfig.Windows_settings.chrome_bookmark_urls | Sort-Object -Descending
     $requiredBookmarkURLs = $requiredBookmarkURLs -replace "^(http(s?):\/\/)", ""
     $actualBookmarks = $Value.roots.bookmark_bar.children.url | Sort-Object -Descending
@@ -503,14 +504,20 @@ function Test-ChromeHomepage {
     # Getting the chrome homepage and converting from JSON
     $Path = "$Env:SystemDrive\Users\$Env:USERNAME\AppData\Local\Google\Chrome\User Data\Default\Secure Preferences"
     if (-not (Test-Path -Path $Path)) {
-        Write-Error "Could not find Chrome Homepage for user: [$($Env:USERNAME)]"
+        #Write-Error "Could not find Chrome Homepage for user: [$($Env:USERNAME)]"
         return Format-ResultsOutput -Result "BLOCKED" -Message "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. Looking in path [$($Path)]"
     }
     $Value = Get-Content -Path $path -Raw | ConvertFrom-Json
+    if ( ( -not $Value ) -or ( -not $Value.session ) -or ( $null -eq $Value.session.startup_urls )) {
+        $ErrorMessage = "Could not find Chrome Homepage for user: [$($Env:USERNAME)]. The file [$($Path)] doesn not contain a [session].[startup_urls] Property"
+        #Write-Error $ErrorMessage
+        return Format-ResultsOutput -Result "BLOCKED" -Message $ErrorMessage
+    }
     $actualHomeURL = ($Value.session.startup_urls).Replace("https:\\","").Replace("http:\\","").trim('\')
 
     # Getting the homepage URL
-    $testConfig = Get-Content -Path "config\config.yaml" | ConvertFrom-Yaml
+    $configYAMLPath = Join-Path -Path $PSScriptRoot -ChildPath "\..\config\config.yaml"
+    $testConfig = Get-Content -Path $configYAMLPath | ConvertFrom-Yaml
     $homeURL = ($testConfig.Windows_settings.chrome_home_url).Replace("https:\\", "").Replace("http:\\", "").trim('\')
 
     $Message = @"
@@ -526,7 +533,7 @@ END OF LOG
 
 "@
 
-    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"\en"))){
+    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"/en"))){
         $passed = "PASSED"
     }else{
         $passed = "FAILED"
@@ -895,6 +902,399 @@ function Test-RightClickContextMenuRegistryValues{
     
 }
 
+function Test-PersonalizationSettingsRegistryValues{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+    $windowsVersions = Get-WindowsVersionInfo
+    if($windowsVersions.WindowsVersion -eq 10){
+        return Format-ResultsOutput -Result "WON'T TEST" -Message "The windows version has been detected as [$($windowsVersions.WindowsVersion)], which doesn't require this test."
+    }
+    $contextMenu = $null
+    
+    $overallResultText = ""
+    $overallResultBoolean = $true
+    
+    #Show recently added apps on Start menu
+    $registryLocation1 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+    $overallResultText += "Registry Location [$($registryLocation1)] Exists: "
+    try{
+        $contextMenu1 = Get-ItemProperty -Path $registryLocation1 -ErrorAction SilentlyContinue
+        #this line only gets run if the command above worked (which means $registryLocation1 exists)
+        $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+    }catch{
+    	#this section only gets run if the command above failed (which means $registryLocation1 does not exist)
+        $contextMenu1 = $null
+        $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+        $overallResultBoolean = $false
+    }
+    
+     #Show the most used app
+     $registryLocation2 = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+     $overallResultText += "Registry Location [$($registryLocation2)] Exists: "
+     try{
+         $contextMenu2 = Get-ItemProperty -Path $registryLocation2 -ErrorAction SilentlyContinue
+         #this line only gets run if the command above worked (which means $registryLocation1 exists)
+         $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+     }catch{
+         #this section only gets run if the command above failed (which means $registryLocation2 does not exist)
+         $contextMenu2 = $null
+         $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+         $overallResultBoolean = $false
+     }
+    
+      #check the registry values, but only if the two registry locations above exist
+      if( $overallResultBoolean ) {
+    
+	    #Check HideRecentlyAddedApps = 1 from registryLocation1
+	    $overallResultText += "Registry Value [$($registryLocation1)/HideRecentlyAddedApps] is [1]: "
+	    if (($contextMenu1.('HideRecentlyAddedApps') -eq 1)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    
+	    #Check Start_TrackProgs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackProgs] is [0]: "
+	    if (($contextMenu2.('Start_TrackProgs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_TrackDocs = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_TrackDocs] is [0]: "
+	    if (($contextMenu2.('Start_TrackDocs') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        #Check Start_IrisRecommendations = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_IrisRecommendations] is [0]: "
+	    if (($contextMenu2.('Start_IrisRecommendations') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+	    #Check Start_AccountNotifications = 0 from registryLocation2
+	    $overallResultText += "Registry Value [$($registryLocation2)/Start_AccountNotifications] is [0]: "
+	    if (($contextMenu2.('Start_AccountNotifications') -eq 0)) {
+	    	$overallResultText += "PASSED`n`n"
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+
+function Test-OptionalFeatures{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+       $overallResultText = ""
+       $overallResultBoolean = $true
+    
+    #SNMP
+    try{
+        $SNMP = Get-WindowsCapability -Online | Where-Object {$_.Name -eq 'SNMP.Client~~~~0.0.1.0' -and $_.state -eq 'Installed'}
+        $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+    }catch{
+        $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+        $overallResultBoolean = $false
+    }
+    
+     #WMI SNMP
+     try{
+         $WMISNMP = Get-WindowsCapability -Online | Where-Object {$_.Name -eq 'WMI-SNMP-Provider.Client~~~~0.0.1.0' -and $_.state -eq 'Installed'}
+         $overallResultText += "PASSED`n`n"  #the `n`n part adds two new lines to the text
+     }catch{
+         #this section only gets run if the command above failed (which means feature hasn't been installed)
+         $overallResultText += "FAILED`n`n"  #the `n`n part adds two new lines to the text
+         $overallResultBoolean = $false
+     }
+    
+      if( [bool]$SNMP ) {
+    
+	    $overallResultText += "SNMP feature exists "
+
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+	    }
+
+        if( [bool]$WMISNMP ) {
+	    $overallResultText += "WMI SNMP exists "
+
+	    } else {
+	    	$overallResultText += "FAILED`n`n"
+	    	$overallResultBoolean = $false
+
+	    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+    
+
+function Test-D3InstallLocation{
+    param(
+        # [Parameter(Mandatory=$false)]
+        # [String]$TestRunTitle
+    )
+    #Check 'build' and 'source' folders exist in the path
+    $folder1 = 'C:\Program Files\d3 Production Suite\build'
+    $folder2 = 'C:\Program Files\d3 Production Suite\source'
+
+    $resultStatus = if((Test-Path -Path $Folder1) -and (Test-path -path $folder2)) { "PASSED" } else { "FAILED" }
+    $overallResultText = if((Test-Path -Path $Folder1) -and (Test-path -path $folder2)) { "Path exists!"} else {"One or both of the these paths do not exist: [$($folder1)], [$($folder2)]"}
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+
+function Test-RenderstreamFolder{
+    $overallResultText = ""
+    $overallResultBoolean = $true
+    
+    $RenderStreamFolderPath = 'D:\RenderStream Projects'
+    $d3projectsFolderPath = 'D:\d3 projects'
+    
+    $RenderStreamFolderExist = Test-Path $RenderStreamFolderPath
+    $d3projectsFolderExist = Test-Path $d3projectsFolderPath
+    $SMBshare1 = Get-SmbShare | Where-Object {$_.Name -eq 'Renderstream Projects'}
+    $SMBshare2 = Get-SmbShare | Where-Object {$_.Name -eq 'd3 Projects'}
+   
+    if ($RenderStreamFolderExist -or $d3projectsFolderExist ){ 
+       
+       $share1= ''
+       try {
+        $share1 = Get-SmbShare | Where-Object {$_.Name -eq 'Renderstream Projects' -and $_.path -eq $RenderStreamFolderExist}
+       }catch{ $share1 = ''}
+
+       $share2 = ''
+       try {
+           $share2 = Get-SmbShare | Where-Object {$_.Name -eq 'd3 Projects' -and $_.path -eq $d3projectsFolderExist}
+       }catch{ $share2 = ''}
+
+       $overallResultBoolean = ($RenderStreamFolderExist -and $d3projectsFolderExist -and [bool]$share1 -and [bool]$share2)
+
+       if(-not [bool]$share1){
+            $overallResultText = "No network share of Renderstream Projects folder in D drive, RenderStreamProjects Folder with network share found: [$($SMBshare1.path)]"
+            Write-Warning $overallResultText
+       
+        }else {
+            $overallResultText = "RenderStreamProjects Folder with network share found: [$RenderStreamFolderPath]"
+            Write-Host $overallResultText
+        }
+       
+        if(-not [bool]$share2){
+            $overallResultText = "No network share of d3 Projects folder in D drive, d3Projects Folder with network share found: [$($SMBshare2.path)]"
+            Write-Warning $overallResultText
+        }else {
+            $overallResultText = "d3Projects Folder with network share found: [$d3projectsFolderPath]"
+            Write-Host $overallResultText
+        }
+       }
+
+    else{ 
+       
+       $overallResultBoolean = $false
+       try {
+           $share1 = Get-SmbShare | Where-Object {$_.Name -eq 'Renderstream Projects'}
+       }catch{ $share1 = ''}
+
+       try {
+           $share2 = Get-SmbShare | Where-Object {$_.Name -eq 'd3 projects'}
+       }catch{ $share2 = ''}
+       
+       if(-not [bool]$share1){
+        $overallResultText = "No network share of renderstream Projects folder in D drive"
+        Write-Warning $overallResultText
+        }else{
+        $overallResultText = "Renderstream projects folder with network share is on [$($SMBshare1.path)]"
+        Write-Host $overallResultText
+        }
+       if([bool]$share2 -eq $false){
+        $overallResultText = "No network share of d3 Projects folder in D drive"
+        Write-Warning $overallResultText
+        }else{
+        $overallResultText = "d3 projects folder with network share is on [$($SMBshare2.path)]"
+        Write-Host $overallResultText  
+
+        }
+        $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
+        return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+    }
+}
+function Test-PasswordProtectedSharing{
+
+    $ListOfGuestUser = Get-LocalUser -name guest 
+
+    if (($ListOfGuestUser.enabled) -and ( -not $ListOfGuestUse.PasswordRequired )) {
+        $overallResultText = 'Password Protected Sharing can work (Guest User is Enabled and does not require a password)'
+        write-host $overallResultText
+        $overallResultBoolean = $true
+    }else{ 
+        $overallResultText = 'Password Protected Sharing cannot be disabled becasuse the Guest User is either not Enabled or it is Enabled WITH A required password)'
+        write-Warning $overallResultText
+        $overallResultBoolean = $false
+    }
+
+    if( $overallResultBoolean ) {
+        $sharingSetting = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "ForceGuest"
+        if ($sharingSetting.ForceGuest -eq 1) {
+            $overallResultText = "Password Protected Sharing is disabled (Guest User is Enabled and does not require a password, and [ForceGuest] is enabled in Registry location [HKLM:\SYSTEM\CurrentControlSet\Control\Lsa])"
+            write-host $overallResultText
+            $overallResultBoolean = $true
+        } else {
+            $overallResultText = "Password Protected Sharing is enabled (Guest User is Enabled and does not require a password HOWEVER [ForceGuest] is Disabled in Registry location [HKLM:\SYSTEM\CurrentControlSet\Control\Lsa] and it should be Enabled)"
+            write-Warning $overallResultText
+            $overallResultBoolean = $false
+        }
+    }
+    
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
+    return Format-ResultsOutput -Result $resultStatus -Message $overallResultText
+}
+
+function Test-StartupApps {
+
+    # Get Config YAML as PS Object
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    $StartupRegList = $configYAMLPSObject.approvedStartupApps_RegistryLocations
+
+    $KeyNameMatchPatternList = $configYAMLPSObject.approvedStartupApps_RegistryKeys
+
+    $ListOfDisabledApps = $configYAMLPSObject.approvedDisabledApps_RegistryKeys
+
+    # Gathering the model config
+    $modelConfig = Import-ModelConfig -ReturnAsPowershellObject
+
+    Write-Host
+    Write-Host "Checking Model-Specific Settings:"
+
+    #remove d3buddy from the list if this model of machine DOES NOT have d3 installed
+    if( $modelconfig.hasD3Installed ) {
+        Write-Host "Keeping [d3buddy] in the list of approved startup items as the [$($modelConfig.biosHandle)] has d3 Installed"
+    }
+    else {
+        Write-Warning "Removing [d3buddy] from the list of approved startup items as the [$($modelConfig.biosHandle)] should not have d3 Installed"
+        $noOfItemsBeforeRemoval = $StartupRegList.Count
+        $StartupRegList = $StartupRegList | Where-Object { $_ -ne 'd3buddy' }
+        if( $StartupRegList.Count -ne ( $noOfItemsBeforeRemoval - 1 ) ) {
+            Write-Error "Error Removing [d3buddy] from the list of Startup Items: [$( $StartupRegList -join ']/[' )]"
+        } 
+    }
+
+    #remove mveXinfo* from the list if this model of machine DOES NOT allow matrox cards
+
+    #etc
+
+    $overallResultBoolean = $true
+    $overallResultText = ""
+    foreach ( $KeyNameMatchPattern in $KeyNameMatchPatternList )
+    {
+        $NeedtobeEnabled = -not ($ListOfDisabledApps -contains $KeyNameMatchPattern)
+        $needsToBeEnabledOrDisabledText = if( $NeedtobeEnabled ) { "enabled" } else { "disabled" }
+
+        $ThisTestResultText =""
+        Write-Host "Searching for a StartUp Reg key Matching [$($KeyNameMatchPattern)] (which needs to be [$($needsToBeEnabledOrDisabledText)])"
+        $IsEnabled = $false
+        $matchingRegKeyName = $null # this variable tells us whether a key was found and if so, what the matching key name is inside the registry
+        $matchingRegKeyValue = $null
+        $NeedtobeEnabled = $true
+        foreach ( $RegPath in $StartupRegList){
+
+            
+            $RegValues = Get-ItemProperty -Path $RegPath <#-Name $KeyNameMatchPattern#> -ErrorAction SilentlyContinue
+
+            # RegValues now contains an object with one propery for each of the registry keys at the location $regpath
+            # eg
+            # Name                        MemberType   Definition
+            # ----                        ----------   ----------
+            # Equals                      Method       bool Equals(System.Object obj)
+            # GetHashCode                 Method       int GetHashCode()
+            # GetType                     Method       type GetType()
+            # ToString                    Method       string ToString()
+            # AorusFusion                 NoteProperty byte[] AorusFusion=System.Byte[]
+            # d3buddy                     NoteProperty byte[] d3buddy=System.Byte[]
+            # PSChildName                 NoteProperty string PSChildName=Run
+            # PSDrive                     NoteProperty PSDriveInfo PSDrive=HKLM
+            # PSParentPath                NoteProperty string PSParentPath=Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\…
+            # PSPath                      NoteProperty string PSPath=Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Window…
+            # PSProvider                  NoteProperty ProviderInfo PSProvider=Microsoft.PowerShell.Core\Registry
+            # RtkAudUService              NoteProperty byte[] RtkAudUService=System.Byte[]
+            # SecurityHealth              NoteProperty byte[] SecurityHealth=System.Byte[]
+            # Sophos UI.exe               NoteProperty byte[] Sophos UI.exe=System.Byte[]
+            # TortoiseHgOverlayIconServer NoteProperty byte[] TortoiseHgOverlayIconServer=System.Byte[]
+            # Zoom                        NoteProperty byte[] Zoom=System.Byte[]
+
+            $RegValues.PSObject.Properties | ForEach-Object {
+                $regObjectPropertyName = $_
+                if( $regObjectPropertyName.TypeNameOfValue -eq "System.Byte[]" -and $regObjectPropertyName.Name -like $KeyNameMatchPattern )
+                {
+                    $matchingRegKeyName = $regObjectPropertyName.Name
+                    $matchingRegKeyValue = $regObjectPropertyName.Value
+                }
+            }
+
+            #check if a registry key was found mathcing the pattern (eg WinMFT Cleanup*)
+            if( $matchingRegKeyName ){
+                #Yes a reg key was found
+                Write-Host ""
+                if (($matchingRegKeyValue[0] -eq 2) -or ($matchingRegKeyValue[0] -eq 6) )
+                {
+                    $IsEnabled = $true
+                }
+                break # this sends you to: #end of reg locations loop
+            }else{
+                #No a reg key was not found, so loop again and try the next one
+                $NeedtobeEnabled = $false
+            }
+            
+        } #end of reg locations loop
+
+        $didThisTestPass = ($IsEnabled -eq $NeedtobeEnabled)
+        $thisTestPassedOrFailedText = "FAIL"
+        $IsEnabledOrDisabledText = "disabled"
+        if ($didThisTestPass){
+            $thisTestPassedOrFailedText = "PASS"
+        }
+        if ($IsEnabled){
+            $IsEnabledOrDisabledText = "enabled"
+        }
+
+        if (-not ($matchingRegKeyName -eq $null)){
+        $ThisTestResultText = "[$($thisTestPassedOrFailedText)]:The Reg Match Pattern [$($KeyNameMatchPattern)] matched the Startup Reg Key [$($matchingRegKeyName)] which has been [$($IsEnabledOrDisabledText)] and it needs to be [$($needsToBeEnabledOrDisabledText)]"
+        }else{
+        $ThisTestResultText ="[$($thisTestPassedOrFailedText)]:The Reg Match Pattern [$($KeyNameMatchPattern)] did not match any Startup Reg Keys so it is [disabled]and it needs to be[$($needsToBeEnabledOrDisabledText)]"
+        }
+        $overallResultText = $overallResultText + "$($ThisTestResultText)`n"
+        Write-Host $overallResultText
+        Write-Host 
+        #altervative : ( ($ListOfDisabledApps -contains $KeyNameMatchPattern) -ne $IsEnabled )
+        $didThisTestPass = ((($ListOfDisabledApps -contains $KeyNameMatchPattern) -and ( -not $IsEnabled )) -or ( (-not ($ListOfDisabledApps -contains $KeyNameMatchPattern)) -and ($IsEnabled)))
+        if(-not $didThisTestPass)
+        #if( ($ListOfDisabledApps -contains $KeyNameMatchPattern) -ne $IsEnabled )
+        {   
+            $overallResultBoolean = $false 
+        }   
+
+    } #end of reg keys loop
+    $resultStatus = if( $overallResultBoolean ) { "PASSED" } else { "FAILED" }
+    Write-Host $resultStatus -ForegroundColor Yellow
+    Write-Host $overallResultText -ForegroundColor Yellow
+}
 
 
 # Export only the functions using PowerShell standard verb-noun naming.
