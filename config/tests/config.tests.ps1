@@ -302,6 +302,14 @@ return @{
                 TestMessage     =   $null
                 PathToImage     =   $null
                 TestScriptBlock =   {Get-AudioPatch}
+            },
+            [PSCustomObject]@{
+                Name            =   "Test Desktop is Clear After ReImage"
+                TestRailCode    =   1577730
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Test-DesktopIsClearAfterReimage}
             }
         )
 

@@ -126,6 +126,28 @@ windows_settings:
       - "dCare"
       - "dScope"
 
+  possible_desktop_content_folders:
+    - "C:\\Users\\Public\\Desktop"
+    - "C:\\Users\\d3\\Desktop"
+    - "C:\\Users\\john.milner\\Documents"
+
+  possible_virtual_desktop_icon_names:
+    - "Recycle Bin"
+    - "This PC"
+    - "Network"
+    - "Control Panel"
+    - "User's Files"
+
+  possible_virtual_desktop_icon_clsids:
+    - "{645FF040-5081-101B-9F08-00AA002F954E}"
+    - "{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+    - "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}"
+    - "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"
+    - "{59031a47-3f72-44a7-89c5-5595fe6b30ee}"
+  
+  desktop_icon_clsids_that_default_to_visible:
+    - "{645FF040-5081-101B-9F08-00AA002F954E}" # Recycle Bin
+
 devices_settings:
   deltacast_apps:
     - "C:\\Program Files\\Deltacast\\dCARE\\bin\\dCARE"

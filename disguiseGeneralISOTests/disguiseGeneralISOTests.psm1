@@ -502,7 +502,124 @@ function Get-AudioPatch{
 
 }
 
+function Test-DesktopIsClearAfterReimage {
+    param(
+    )
 
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    #validate the number of items $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_names matches the number of items in $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_clsids
+    if( -not $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_names -or
+        -not $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_clsids ) {
+        throw "The config.yaml file is missing the [windows_settings.possible_virtual_desktop_icon_names] or [windows_settings.possible_virtual_desktop_icon_clsids] entries. Please check the config.yaml file."
+    }
+    if ($configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_names.Count -ne $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_clsids.Count) {
+        throw "The number of items in [windows_settings.possible_virtual_desktop_icon_names] does not match the number of items in [windows_settings.possible_virtual_desktop_icon_clsids]. Please check the config.yaml file."
+    }
+
+    # Desktop Folders to check
+    [string[]]$desktopPaths = [string[]]$configYAMLPSObject.windows_settings.possible_desktop_content_folders
+    if( -not $desktopPaths ) {
+        throw "The config.yaml file is missing the [windows_settings.possible_desktop_content_folders] entry. Please check the config.yaml file."
+    }
+
+    $result = "BLOCKED"
+    $message = "An unhandled error occurred while checking the desktop state."
+    try {
+        [System.IO.FileSystemInfo[]]$allNonExemptItems = [System.IO.FileSystemInfo[]]@()
+
+        foreach ($path in $desktopPaths) {
+            if (Test-Path $path) {
+                [System.IO.FileSystemInfo[]]$nonExemptItems = Get-ChildItem -Path $path -Force | Where-Object { 
+                    $_.Name -notmatch 'Thumbs.db' -and
+                    $_.Name -ne "EXEMPT_FROM_OSVALIDATION_CLEAR_DESKTOP_TEST"
+                }
+
+                if ($nonExemptItems.Count -gt 0) {
+                    [System.IO.FileSystemInfo[]]$allNonExemptItems += [System.IO.FileSystemInfo[]]$nonExemptItems
+                }
+            }
+            else {
+                Write-Verbose "Desktop folder [$path] not found. Skipping."
+            }
+        }
+
+        [string[]]$visibleActiveDesktopIconDescriptions = [string[]]@()
+        # Check if all active desktop icons hidden by default
+        $advPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+        $allActiveDesktopIconsHidden = $false
+        if (Test-Path $advPath) {
+            $val = (Get-ItemProperty -Path $advPath -Name "HideIcons" -ErrorAction SilentlyContinue).HideIcons
+            if ($val -eq 1) { $allActiveDesktopIconsHidden = $true }
+        }
+
+        if( -not $allActiveDesktopIconsHidden ) {
+            $nonEnumCLSIDSRegristyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\NonEnum"
+            $manuallyHideIconsRegistryPaths = @(
+                "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel", #global setting
+                "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel"  #user level overwride
+            )
+            $names  = $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_names
+            $clsids = $configYAMLPSObject.windows_settings.possible_virtual_desktop_icon_clsids
+            $defaultVisibleclsids = $configYAMLPSObject.windows_settings.desktop_icon_clsids_that_default_to_visible
+
+            for ($i = 0; $i -lt $names.Count; $i++) {
+                $iconName = $names[$i]
+                $clsid    = $clsids[$i]
+                $isVisibleByDefault = [bool]($clsid -in $defaultVisibleclsids)
+                $isVisible = $isVisibleByDefault #is it visible by default
+
+                # 2. Check Group Policy NonEnum for this CLSID - if noenum then its hidden by policy unless $isVisibleByDefault
+                $noOverwrideAllowedByPolicy = $false
+                if (Test-Path $nonEnumCLSIDSRegristyPath) {
+                    $val = (Get-ItemProperty -Path $nonEnumCLSIDSRegristyPath -Name $clsid -ErrorAction SilentlyContinue).$clsid
+                    if ($val -eq 1) { $noOverwrideAllowedByPolicy = $true }
+                }
+
+                if( -not $noOverwrideAllowedByPolicy ) {
+                    foreach ($path in $manuallyHideIconsRegistryPaths) { #check machine level setting for an overwride, then check user level setting for an overwride
+                        if (Test-Path $path) {
+                            $value = (Get-ItemProperty -Path $path -Name $clsid -ErrorAction SilentlyContinue).$clsid
+                            if( $null -ne $value ) {
+                                $isVisible = -not ( [bool]$value )
+                            }
+                        }
+                    }
+                }
+
+                if ( $isVisible ) {
+                    [string[]]$visibleActiveDesktopIconDescriptions += [string]"Active Desktop Icon [$($iconName)] - with CLSID [$($clsid)] is visible on the desktop."
+                }
+            }
+        }
+
+        #Build array of strings ($itemNames) of things that are on the desktop that shouldnt be
+        [string[]]$itemNames = [string[]]@()
+        if ($allNonExemptItems.Count -gt 0) {
+           [string[]]$itemNames += [string[]]( $allNonExemptItems.FullName )
+        }
+        if( $visibleActiveDesktopIconDescriptions.Count -gt 0 ) {
+            [string[]]$itemNames += [string[]]$visibleActiveDesktopIconDescriptions
+        }
+
+        if( $itemNames ) {
+            $message = "Desktop is not clear. Found the following unexpected items:`n["
+            $message += $itemNames -join "]`n["
+            $message += "]"
+            $result = "FAILED"
+        }
+        else {
+            $message = "Desktop is clear. Only exempt [EXEMPT_FROM_OSVALIDATION_CLEAR_DESKTOP_TEST] folder (if any) found."
+            $result = "PASSED"
+        }
+    }
+    catch {
+        $message = "An error occurred while checking desktop state: $($_.Exception.Message)"
+        $result = "BLOCKED"
+    }
+
+    return Format-ResultsOutput -Result $result -Message $message
+}
 
 
 
