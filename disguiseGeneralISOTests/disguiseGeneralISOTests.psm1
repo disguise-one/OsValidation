@@ -63,7 +63,7 @@ function Test-RemoteReImageLogs {
         return Format-ResultsOutput -Result "WON'T TEST" -Message "No Remote Logs are expected after an Internal Restore, PASSED by Default!"
     }
     else {
-        if( $Global:OSValidationConfig.TestType -eq "USB" ) {
+        if( $Global:OSValidationConfig.TestRunType -eq "USB" ) {
             $USBName = 'REDISGUISE'
             #Find USB Drive called REDISGUISE
             $USBVolumeObject = Get-CimInstance Win32_Volume -Filter "DriveType='2'" | Where-Object { $_.Label -eq $USBName }
@@ -84,11 +84,11 @@ function Test-RemoteReImageLogs {
                 return Test-ReImageLogs -LoggingDirectory $USBDriveRootPath
             }
         }
-        elseif( $Global:OSValidationConfig.TestType -eq "R20" ) {
+        elseif( $Global:OSValidationConfig.TestRunType -eq "R20" ) {
             return Format-ResultsOutput -Result "BLOCKED" -Message "This Test has not been implemented yet as we are currently unable to ascertain the path to the Director Machine's [DeploymentShare\Logs] Directory. Please conduct this test manually."
         }
         else {
-            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $Global:OSValidationConfig.TestType )]"
+            return Format-ResultsOutput -Result "FAILED" -Message "ERROR: Unknown Test Type: [$( $Global:OSValidationConfig.TestRunType )]"
         }
     }
 }
@@ -308,6 +308,20 @@ function Test-MachineName{
 function Test-OSName{
     param(
     )
+
+    #Load and Validate Config YAML 
+    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
+    Write-Host $configYAMLPSObject
+
+    $reg_location_d3_information_folder = $configYAMLPSObject.registry_keys.d3_information_folder
+    $reg_location_d3_release_entry = $configYAMLPSObject.registry_keys.d3_information_entries.d3_info
+    $d3VersionNumberFromRegistry = Get-ItemProperty -Path $reg_location_d3_information_folder -Name $reg_location_d3_release_entry
+    $d3VersionNumber = $d3VersionNumberFromRegistry.'product version'
+    $d3MinVersion = "30.8.0.216685"
+    
+    if ($d3VersionNumber -lt $d3MinVersion) {
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Your d3 version [$($d3VersionNumber)] is too old. Please update it to [$($d3MinVersion)] and re-run this test. Thanks!"}
     # Dot-Source the OS Validation Settings ps1 file into a powershell object variable and validate it
     $OSValidationTemplatePSObject = ( . $Global:OSValidationConfig.PathToOSValidationTemplate )
     if( -not $OSValidationTemplatePSObject ) {
@@ -319,8 +333,7 @@ function Test-OSName{
         return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The Powershell OS Validation Template file [$( $Global:OSValidationConfig.PathToOSValidationTemplate )] does not contain a value for [RedisguiseName], cannot complete Test"
     }
 
-    #Load and Validate Config YAML 
-    $configYAMLPSObject = Get-ConfigYAMLAsPSObject
+
     if( -not $configYAMLPSObject ) {
         return Format-ResultsOutput -Result "BLOCKED" -Message "ERROR: The OS Validation YAML Config file [/config.config.yaml] could not be loaded. Either the file must be missing or it contains invalid YAML formatting."
     }
@@ -412,6 +425,7 @@ function Test-OSName{
         $overallResult = "PASSED"
     }
     return Format-ResultsOutput -Result $overallResult -Message "REGISTRY CHECK: $($d3testResult_RegCheck) - $($d3Message_RegCheck)`n`n`nD3SERVICE CHECK: $($d3testResult_APICheck) - $($d3Message_APICheck)"
+    
 }
 
 function Test-DDrive{
@@ -446,6 +460,43 @@ function Test-CWindowsDisguisedpowerGetsDeleted{
     }
 }
 
+function Get-AudioPatch{
+    param()
+
+    $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
+    $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "AudioPatch_$($timestamp).bmp"
+
+    Start-sleep -Milliseconds 200
+    
+    # 1. Start TotalMix FX
+    $exePath = "C:\Windows\System32\totalmixFX.exe"
+    $process = Start-Process -FilePath $exePath
+    $ExistingProcess = Get-Process -Name "TotalMixFX" -ErrorAction SilentlyContinue
+    $process = $ExistingProcess
+
+    Start-sleep -Milliseconds 200
+    
+     # 2. Send 'x' key
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.SendKeys]::SendWait("x")
+    
+    Start-sleep -Milliseconds 500
+
+    $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
+    $process.CloseMainWindow() | Out-Null
+    Start-Sleep -Seconds 2
+
+    if($process){
+        return Format-ResultsOutput -Result "BLOCKED" -Message "Please review the screenshot and add the test result to testrail." -pathToImage $pathToImageStore
+    }else{
+        return Format-ResultsOutput -Result "FAILED" -Message "No Totalmix FX found"
+    }
+
+
+}
+
+
+
 
 
 
@@ -453,3 +504,5 @@ function Test-CWindowsDisguisedpowerGetsDeleted{
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.
 Export-ModuleMember -Function *-*
+
+

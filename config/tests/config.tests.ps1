@@ -286,6 +286,22 @@ return @{
                 TestMessage     =   $null
                 PathToImage     =   $null
                 TestScriptBlock =   {Test-CWindowsDisguisedpowerGetsDeleted}
+            },
+            [PSCustomObject]@{
+                Name            =   "Windows licensing"
+                TestRailCode    =   754241
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Get-WindowsLicensingAndEvidence}
+            },            
+            [PSCustomObject]@{
+                Name            =   "Audio patch"
+                TestRailCode    =   754278
+                TestStatus      =   "NOT TESTED"
+                TestMessage     =   $null
+                PathToImage     =   $null
+                TestScriptBlock =   {Get-AudioPatch}
             }
         )
 

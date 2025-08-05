@@ -533,7 +533,7 @@ END OF LOG
 
 "@
 
-    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"\en"))){
+    if(($actualHomeURL -eq $homeURL) -or ($actualHomeURL -eq ($homeURL+"/en"))){
         $passed = "PASSED"
     }else{
         $passed = "FAILED"
