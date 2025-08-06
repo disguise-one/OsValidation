@@ -376,6 +376,29 @@ function Import-OSValidatonConfig{
     return $config
 }
 
+function Set-ProcessesWindowWindowToTheForeground {
+    param(
+        [Parameter(Mandatory)]
+        [System.Diagnostics.Process]$Process
+    )
+
+    Add-Type -Name User32 -Namespace WinAPI -MemberDefinition @"
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+"@
+
+    $hwnd = $Process.MainWindowHandle
+    if ($hwnd -ne 0) {
+        [WinAPI.User32]::ShowWindowAsync($hwnd, 5)   # 5 = SW_SHOW
+        [WinAPI.User32]::SetForegroundWindow($hwnd)  | Out-Null
+        return $true
+    }
+    return $false
+}
+
 # Export only the functions using PowerShell standard verb-noun naming.
 # Be sure to list each exported functions in the FunctionsToExport field of the module manifest file.
 # This improves performance of command discovery in PowerShell.

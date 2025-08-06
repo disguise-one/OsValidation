@@ -239,16 +239,6 @@ function Get-WindowsLicensingAndEvidence{
     param(        
     )
 
-    Add-Type @"
-    using System;
-    using System.Runtime.InteropServices;
-    public class SFW {
-     [DllImport("user32.dll")]
-     [return: MarshalAs(UnmanagedType.Bool)]
-     public static extern bool SetForegroundWindow(IntPtr hWnd);
-    }
-"@
-
 
     # Write-Host "Gathering Windows License..."
     try{
@@ -260,26 +250,40 @@ function Get-WindowsLicensingAndEvidence{
     }
 
     # Call this in a start-job so the script can continue outside of the popup
-    $LicenseJob = start-job -Name "OSQAWindowsLicense" -ScriptBlock {slmgr /dli }
+    $LicenseJob = start-job -Name "OSQAWindowsLicense" -ScriptBlock {
+        slmgr /dli 
+    }
 
     $timestamp = Get-Date -Format "dd_MM_yyyy__HH_mm_ss"
     $pathToImageStore = Join-Path -path (Import-OSValidatonConfig).pathToOSValidationTempImageStore -ChildPath "WindowsLicense_$($timestamp).bmp"
 
-    Start-sleep -Milliseconds 600
+    Start-sleep -Milliseconds 1000
 
-    $process = Get-Process | Where-Object {$_.ProcessName -eq "wscript"}
+    # Find wscript process (could be multiple, take newest)
+    $process = Get-Process wscript | Sort-Object StartTime -Descending | Select-Object -First 1
 
-    # try{
-    #     [Program]::SetForegroundWindow($process.MainWindowHandle)
-    # }catch [TypeNotFound]{
-    #     $a = 0
-    # }
-    
-    Start-sleep -Milliseconds 200
+    if ($process) {
+        Set-ProcessesWindowWindowToTheForeground -Process $process
+        Start-Sleep -Milliseconds 300
+        $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
+        
+        # First try to close window gracefully
+        $closed = $false
+        try {
+            $closed = $process.CloseMainWindow()
+            Start-Sleep -Milliseconds 500
+        } catch { }
 
-    $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
+        # If window still exists, force kill
+        if (-not $closed -and (Get-Process -Id $process.Id -ErrorAction SilentlyContinue)) {
+            Stop-Process -Id $process.Id -Force 
+        }
+    }
 
-    $process | Stop-Process | Out-Null
+        # Cleanup background job
+    if (Get-Job -Name "OSQAWindowsLicense" -ErrorAction SilentlyContinue) {
+        Remove-Job -Name "OSQAWindowsLicense" -Force
+    }
 
     if($activated){
         return Format-ResultsOutput -Result "PASSED" -Message "Windows partial product key is present" -pathToImage $pathToImageStore

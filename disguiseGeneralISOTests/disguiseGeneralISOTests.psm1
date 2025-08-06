@@ -478,28 +478,39 @@ function Get-AudioPatch{
     # 1. Start TotalMix FX
     $exePath = "C:\Windows\System32\totalmixFX.exe"
     $process = Start-Process -FilePath $exePath
+
+    Start-sleep -Milliseconds 1000
     $ExistingProcess = Get-Process -Name "TotalMixFX" -ErrorAction SilentlyContinue
     $process = $ExistingProcess
 
-    Start-sleep -Milliseconds 200
+    
     
      # 2. Send 'x' key
     Add-Type -AssemblyName System.Windows.Forms
     [System.Windows.Forms.SendKeys]::SendWait("x")
     
-    Start-sleep -Milliseconds 500
-
+    Start-sleep -Milliseconds 600
+    Set-ProcessesWindowWindowToTheForeground -Process $process
     $success = Get-PrintScreenandRetryIfFailed -PathAndFileName $pathToImageStore
-    $process.CloseMainWindow() | Out-Null
-    Start-Sleep -Seconds 2
+
+
+    # First try to close window gracefully
+    $closed = $false
+    try {
+        $closed = $process.CloseMainWindow()
+        Start-Sleep -Milliseconds 500
+    } catch { }
+
+    # If window still exists, force kill
+    if (-not $closed -and (Get-Process -Id $process.Id -ErrorAction SilentlyContinue)) {
+        Stop-Process -Id $process.Id -Force
+    }
 
     if($process){
         return Format-ResultsOutput -Result "BLOCKED" -Message "Please review the screenshot and add the test result to testrail." -pathToImage $pathToImageStore
     }else{
         return Format-ResultsOutput -Result "FAILED" -Message "No Totalmix FX found"
     }
-
-
 }
 
 function Test-DesktopIsClearAfterReimage {
